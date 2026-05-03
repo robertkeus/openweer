@@ -8,15 +8,34 @@ from typing import Any
 
 import structlog
 
+_NOISY_LIBS: tuple[str, ...] = (
+    "rasterio",
+    "rasterio._env",
+    "rasterio._io",
+    "rasterio._base",
+    "rasterio.env",
+    "fiona",
+    "fiona._env",
+    "h5py",
+    "matplotlib",
+    "PIL",
+)
+
 
 def configure_logging(level: str = "INFO") -> None:
-    """Configure structlog + stdlib logging for JSON output to stdout."""
+    """Configure structlog + stdlib logging for JSON output to stdout.
+
+    Quiets verbose third-party libraries to WARNING regardless of our app
+    level so DEBUG mode doesn't drown the operator in GDAL chatter.
+    """
     log_level = getattr(logging, level.upper(), logging.INFO)
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
         level=log_level,
     )
+    for name in _NOISY_LIBS:
+        logging.getLogger(name).setLevel(logging.WARNING)
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,

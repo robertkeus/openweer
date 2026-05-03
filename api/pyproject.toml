@@ -17,6 +17,8 @@ dependencies = [
     "numpy>=2.4.4",
     "rasterio>=1.5.0",
     "pillow>=12.2.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
 ]
 
 [project.optional-dependencies]
@@ -57,3 +59,10 @@ python_version = "3.12"
 strict = true
 warn_unused_ignores = true
 plugins = ["pydantic.mypy"]
+
+[dependency-groups]
+dev = [
+    "asgi-lifespan>=2.1",
+    "httpx>=0.28.1",
+    "pytest-httpx>=0.34",
+]
