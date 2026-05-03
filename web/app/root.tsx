@@ -9,6 +9,7 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
+import { ANTI_FOUC_SCRIPT } from "./lib/theme";
 
 const SITE_NAME = "OpenWeer";
 const SITE_DESCRIPTION =
@@ -31,7 +32,16 @@ export const links: Route.LinksFunction = () => [
 export const meta: Route.MetaFunction = () => [
   { title: `${SITE_NAME} — open weerplatform voor Nederland` },
   { name: "description", content: SITE_DESCRIPTION },
-  { name: "theme-color", content: "#0b1320" },
+  {
+    name: "theme-color",
+    content: "#f8fafc",
+    media: "(prefers-color-scheme: light)",
+  },
+  {
+    name: "theme-color",
+    content: "#0b1320",
+    media: "(prefers-color-scheme: dark)",
+  },
   { property: "og:title", content: SITE_NAME },
   { property: "og:description", content: SITE_DESCRIPTION },
   { property: "og:type", content: "website" },
@@ -40,7 +50,7 @@ export const meta: Route.MetaFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="nl">
+    <html lang="nl" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta
@@ -49,6 +59,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         />
         <Meta />
         <Links />
+        {/* Anti-FOUC: set <html class="dark"> before first paint, based on
+            stored preference + prefers-color-scheme. Inline so it runs
+            synchronously, ahead of hydration. */}
+        <script dangerouslySetInnerHTML={{ __html: ANTI_FOUC_SCRIPT }} />
       </head>
       <body className="min-h-screen flex flex-col">
         {children}

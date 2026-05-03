@@ -1,32 +1,69 @@
 @import "tailwindcss";
 
-/* Light theme is the only theme in v1 — keeps colors predictable across the
-   product surface. A dark mode toggle is a v2 feature. */
+/* Class-based dark mode — toggled by `<html class="dark">`. The anti-FOUC
+   inline script in root.tsx sets this synchronously before first paint based
+   on localStorage + prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --font-sans:
     "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
-  /* OpenWeer palette — restrained Dutch design language. */
+  /* OpenWeer palette — light mode (Dutch design language, restrained). */
   --color-sky-50: oklch(0.97 0.02 240);
   --color-ink-50: oklch(0.98 0.005 250);
   --color-ink-100: oklch(0.95 0.01 250);
   --color-ink-200: oklch(0.88 0.015 250);
-  --color-ink-500: oklch(0.55 0.02 250);
+  --color-ink-500: oklch(0.48 0.02 250); /* bumped from 0.55 for AA on surface */
   --color-ink-700: oklch(0.32 0.02 250);
   --color-ink-900: oklch(0.16 0.02 250);
   --color-accent-500: oklch(0.62 0.18 240);
   --color-accent-600: oklch(0.52 0.2 240);
+  --color-sun-400: oklch(0.85 0.16 85);
+
+  /* Semantic surface + role tokens — also redefined under :root.dark. */
+  --color-bg: oklch(0.98 0.005 250);
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-overlay: #ffffff;
+  --color-border: oklch(0.95 0.01 250);
+  --color-no-rain: oklch(0.92 0.005 250);
+  --color-danger: oklch(0.55 0.2 25);
+  --color-danger-bg: oklch(0.96 0.04 25);
+  --color-danger-fg: oklch(0.4 0.2 25);
+}
+
+/* Dark mode — invert ink scale and swap surfaces. */
+:root.dark {
+  color-scheme: dark;
+  --color-sky-50: oklch(0.32 0.04 240);
+  --color-ink-50: oklch(0.22 0.015 250);
+  --color-ink-100: oklch(0.27 0.015 250);
+  --color-ink-200: oklch(0.34 0.015 250);
+  --color-ink-500: oklch(0.72 0.02 250);
+  --color-ink-700: oklch(0.85 0.015 250);
+  --color-ink-900: oklch(0.97 0.005 250);
+  --color-accent-500: oklch(0.72 0.16 240);
+  --color-accent-600: oklch(0.66 0.18 240);
+
+  --color-bg: oklch(0.16 0.02 250);
+  --color-surface: oklch(0.22 0.018 250);
+  --color-surface-elevated: oklch(0.24 0.018 250);
+  --color-overlay: oklch(0.27 0.018 250);
+  --color-border: oklch(0.32 0.018 250);
+  --color-no-rain: oklch(0.34 0.012 250);
+  --color-danger: oklch(0.72 0.18 25);
+  --color-danger-bg: oklch(0.32 0.08 25);
+  --color-danger-fg: oklch(0.85 0.12 25);
 }
 
 html {
-  color-scheme: light;
-  background: var(--color-ink-50);
+  background: var(--color-bg);
 }
 
 body {
-  background: var(--color-ink-50);
+  background: var(--color-bg);
   color: var(--color-ink-900);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -48,4 +85,125 @@ body {
   outline: 2px solid var(--color-accent-600);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* ---- Map-view utilities ---------------------------------------------- */
+
+/* Floating glass panels (location bar, controls, sheet, etc.). */
+.glass-card {
+  background: color-mix(in oklab, var(--color-overlay) 90%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.04),
+    0 8px 24px rgb(15 23 42 / 0.08);
+  border-radius: 1rem;
+}
+
+:root.dark .glass-card {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.4),
+    0 8px 24px rgb(0 0 0 / 0.5);
+}
+
+/* Round floating button — 44×44 touch target. */
+.floating-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  background: var(--color-surface);
+  color: var(--color-ink-900);
+  border: 1px solid var(--color-border);
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.04),
+    0 6px 16px rgb(15 23 42 / 0.08);
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease;
+}
+.floating-btn:hover {
+  background: var(--color-ink-50);
+}
+.floating-btn:active {
+  transform: scale(0.96);
+}
+.floating-btn[aria-pressed="true"] {
+  background: var(--color-accent-600);
+  color: white;
+  border-color: var(--color-accent-600);
+}
+
+:root.dark .floating-btn {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.4),
+    0 6px 16px rgb(0 0 0 / 0.5);
+}
+
+/* Primary / secondary buttons — sidestep Tailwind v4 arbitrary-var issues. */
+.btn-primary {
+  background: var(--color-accent-600);
+  color: #fff;
+  border: 1px solid transparent;
+  transition:
+    background-color 120ms ease,
+    transform 120ms ease;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-500);
+}
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--color-ink-700);
+  border: 1px solid transparent;
+  transition: background-color 120ms ease;
+}
+.btn-secondary:hover {
+  background: var(--color-ink-50);
+}
+
+/* Sheet snap heights — referenced by RainSheet. */
+:root {
+  --sheet-peek: 22vh;
+  --sheet-half: 50vh;
+  --sheet-full: 86vh;
+}
+
+/* Prevent rubber-band scroll on the home/map route. */
+.map-shell {
+  overscroll-behavior: none;
+  touch-action: none;
+}
+.map-shell .maplibregl-canvas,
+.map-shell .maplibregl-map {
+  touch-action: pan-x pan-y;
+}
+
+/* Modal entrance animations (skipped under prefers-reduced-motion). */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
