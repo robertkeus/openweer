@@ -80,3 +80,11 @@ DATASETS: dict[DatasetKey, Dataset] = {
 def get_dataset(key: DatasetKey) -> Dataset:
     """Look up a dataset descriptor by short key."""
     return DATASETS[key]
+
+
+def find_dataset(name: str, version: str) -> Dataset | None:
+    """Look up a dataset by its KNMI name + version. Returns None if not configured."""
+    for ds in DATASETS.values():
+        if ds.name == name and ds.version == version:
+            return ds
+    return None
