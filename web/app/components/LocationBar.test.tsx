@@ -1,29 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LocationBar } from "./LocationBar";
 
 const AMSTERDAM = { name: "Amsterdam", lat: 52.37, lon: 4.89 };
 
 describe("LocationBar", () => {
-  it("renders the current location name in the header", () => {
+  it("shows the current location name as the search placeholder", () => {
     render(<LocationBar current={AMSTERDAM} onSelect={() => {}} />);
-    const region = screen.getByRole("region", { name: /Locatiekiezer/i });
-    // The header label appears in the heading slot; the dropdown also lists it
-    // as an option, so we scope to the region's first paragraph.
-    const labels = within(region).getAllByText("Amsterdam");
-    expect(labels.length).toBeGreaterThanOrEqual(1);
+    const input = screen.getByRole("combobox", { name: /Zoek een plaats/i });
+    expect(input).toHaveAttribute("placeholder", "Amsterdam");
   });
 
-  it("invokes onSelect when a city is picked from the dropdown", async () => {
+  it("invokes onSelect when a known city is picked from the suggestions", async () => {
     const onSelect = vi.fn();
     const user = userEvent.setup();
     render(<LocationBar current={AMSTERDAM} onSelect={onSelect} />);
 
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: /Kies een plaats/i }),
-      "rotterdam",
-    );
+    const input = screen.getByRole("combobox", { name: /Zoek een plaats/i });
+    await user.click(input);
+    await user.type(input, "Rott");
+
+    const option = await screen.findByRole("option", { name: /Rotterdam/ });
+    await user.click(option);
 
     expect(onSelect).toHaveBeenCalledWith(
       expect.objectContaining({ name: "Rotterdam" }),
@@ -58,11 +57,13 @@ describe("LocationBar", () => {
 
     const user = userEvent.setup();
     render(<LocationBar current={AMSTERDAM} onSelect={() => {}} />);
-    await user.click(screen.getByRole("button", { name: /Mijn locatie/ }));
+    await user.click(
+      screen.getByRole("button", { name: /Gebruik mijn huidige locatie/ }),
+    );
 
-    expect(
-      await screen.findByRole("alert"),
-    ).toHaveTextContent(/buiten Nederland/);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /buiten Nederland/,
+    );
 
     Object.defineProperty(global, "navigator", {
       value: original,
