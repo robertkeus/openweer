@@ -5,6 +5,8 @@ import { formatHm, formatRelativeOffset } from "~/lib/format";
 interface Props {
   frames: Frame[];
   currentIndex: number;
+  /** Index of the frame closest to wall-clock time (the "Nu" anchor). */
+  nowIndex?: number;
   isPlaying: boolean;
   onSeek: (index: number) => void;
   onTogglePlay: () => void;
@@ -19,6 +21,7 @@ const FRAME_LABELS: Record<Frame["kind"], string> = {
 export function TimeSlider({
   frames,
   currentIndex,
+  nowIndex,
   isPlaying,
   onSeek,
   onTogglePlay,
@@ -28,11 +31,13 @@ export function TimeSlider({
   const current = frames[currentIndex];
   const baseTs = useMemo(() => {
     if (!frames.length) return null;
-    const observedNow = frames.find((f, i) => f.kind === "observed" && i === currentIndex)
-      ? frames[currentIndex]
-      : frames.find((f) => f.kind === "nowcast") ?? frames[0];
-    return new Date(observedNow.ts).getTime();
-  }, [frames, currentIndex]);
+    const anchor =
+      typeof nowIndex === "number" && frames[nowIndex]
+        ? frames[nowIndex]
+        : (frames.find((f) => f.kind === "nowcast") ?? frames[0]);
+    return new Date(anchor.ts).getTime();
+  }, [frames, nowIndex]);
+  const atNow = typeof nowIndex === "number" && currentIndex === nowIndex;
 
   const minutesFromNow = useMemo(() => {
     if (!current || baseTs === null) return 0;
@@ -71,10 +76,19 @@ export function TimeSlider({
           {isPlaying ? <PauseIcon /> : <PlayIcon />}
           <span>{isPlaying ? "Pauze" : "Afspelen"}</span>
         </button>
-        <div className="text-sm tabular-nums text-[--color-ink-700]">
+        <div className="flex items-center gap-2 text-sm tabular-nums text-[--color-ink-700]">
+          {atNow ? (
+            <span
+              aria-label="Live"
+              className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 text-rose-700 px-2 py-0.5 text-xs font-semibold tracking-wide"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+              Nu
+            </span>
+          ) : null}
           <span className="font-medium">{formatHm(current.ts)}</span>
-          <span className="ml-2 text-[--color-ink-500]">
-            ({formatRelativeOffset(minutesFromNow)} · {FRAME_LABELS[current.kind]})
+          <span className="text-[--color-ink-500]">
+            {atNow ? "(observatie)" : `(${formatRelativeOffset(minutesFromNow)} · ${FRAME_LABELS[current.kind]})`}
           </span>
         </div>
       </div>

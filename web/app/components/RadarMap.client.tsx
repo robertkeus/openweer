@@ -6,9 +6,9 @@
  * happens with a single templated tile URL — see step-5b research notes.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Frame } from "~/lib/api";
-import { tileUrlTemplate } from "~/lib/frames";
+import { findCurrentIndex, tileUrlTemplate } from "~/lib/frames";
 import { TimeSlider } from "./TimeSlider";
 
 interface Props {
@@ -31,8 +31,11 @@ export function RadarMap({ frames }: Props) {
   const mapRef = useRef<unknown>(null);
   const playableFramesRef = useRef<Frame[]>([]);
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
+  // Anchor the slider at the frame closest to wall-clock time so users see
+  // the current observation first, then can press play to scrub the forecast.
+  const initialIndex = useMemo(() => findCurrentIndex(frames), [frames]);
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [mapReady, setMapReady] = useState(false);
 
   // ---- 1) Mount the map once ----
@@ -108,23 +111,30 @@ export function RadarMap({ frames }: Props) {
         type: "raster",
         source: sourceId,
         paint: {
-          "raster-opacity": i === 0 ? 1 : 0,
+          "raster-opacity": i === initialIndex ? 1 : 0,
           "raster-opacity-transition": { duration: FADE_MS },
           "raster-fade-duration": 0,
         },
       });
     });
-    setCurrentIndex(0);
-  }, [mapReady, frames]);
+  }, [mapReady, frames, initialIndex]);
 
-  // ---- 3) Animation loop ----
+  // ---- 3) Animation loop. When it reaches the last frame we pause and
+  // settle back at "now" so the slider doesn't cycle forever. ----
   useEffect(() => {
     if (!mapReady || !isPlaying || frames.length < 2) return;
     const id = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % frames.length);
+      setCurrentIndex((prev) => {
+        const next = prev + 1;
+        if (next >= frames.length) {
+          setIsPlaying(false);
+          return initialIndex;
+        }
+        return next;
+      });
     }, FRAME_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [mapReady, isPlaying, frames.length]);
+  }, [mapReady, isPlaying, frames.length, initialIndex]);
 
   // ---- 4) On every index change, fade the previous out, the new one in ----
   useEffect(() => {
@@ -156,12 +166,19 @@ export function RadarMap({ frames }: Props) {
         <TimeSlider
           frames={frames}
           currentIndex={currentIndex}
+          nowIndex={initialIndex}
           isPlaying={isPlaying}
           onSeek={(i) => {
             setIsPlaying(false);
             setCurrentIndex(i);
           }}
-          onTogglePlay={() => setIsPlaying((p) => !p)}
+          onTogglePlay={() => {
+            // After a finished cycle, tapping play restarts from "now".
+            if (!isPlaying && currentIndex >= frames.length - 1) {
+              setCurrentIndex(initialIndex);
+            }
+            setIsPlaying((p) => !p);
+          }}
         />
       </div>
     </>
