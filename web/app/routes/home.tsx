@@ -1,9 +1,11 @@
 import type { Route } from "./+types/home";
-import { api } from "~/lib/api";
+import { api, ApiError } from "~/lib/api";
+import { LocationCard } from "~/components/LocationCard";
 import { MapMount } from "~/components/MapMount";
 import { SiteFooter } from "~/components/SiteFooter";
 import { SiteHeader } from "~/components/SiteHeader";
 import { defaultPlayableFrames } from "~/lib/frames";
+import { DEFAULT_LOCATION } from "~/lib/locations";
 
 export function meta() {
   return [
@@ -17,18 +19,32 @@ export function meta() {
 }
 
 export async function loader() {
-  // SSR: fetch the manifest so the page can render meaningful content even
-  // before the client-side map mounts. Failures degrade gracefully.
-  try {
-    const frames = await api.frames();
-    return { frames, errored: false as const };
-  } catch (err) {
-    return { frames: { frames: [], generated_at: "" }, errored: true as const };
-  }
+  // SSR: fetch the manifest + the default-location rain forecast so the page
+  // has meaningful content before the client-side map mounts. Failures degrade
+  // gracefully (the page still renders).
+  const [frames, rain] = await Promise.allSettled([
+    api.frames(),
+    api.rain(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon),
+  ]);
+
+  return {
+    frames:
+      frames.status === "fulfilled"
+        ? frames.value
+        : { frames: [], generated_at: "" },
+    framesErrored: frames.status === "rejected",
+    rain: rain.status === "fulfilled" ? rain.value : null,
+    rainError:
+      rain.status === "rejected" && rain.reason instanceof ApiError
+        ? rain.reason.status === 503
+          ? "Nog geen radardata beschikbaar — we proberen het automatisch opnieuw."
+          : "De voorspelling is even niet bereikbaar."
+        : undefined,
+  };
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { frames, errored } = loaderData;
+  const { frames, framesErrored, rain, rainError } = loaderData;
   const playable = defaultPlayableFrames(frames.frames);
 
   return (
@@ -58,12 +74,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         </section>
 
         <section
-          aria-label="Regenradar"
-          className="mx-auto max-w-6xl px-4 sm:px-6 pb-16"
+          aria-label="Regenvoorspelling en radar"
+          className="mx-auto max-w-6xl px-4 sm:px-6 pb-16 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
         >
-          <div className="relative rounded-2xl border border-[--color-ink-100] bg-white shadow-sm overflow-hidden dark:bg-[--color-ink-900] dark:border-[--color-ink-700]">
-            <div className="relative aspect-[4/3] sm:aspect-[16/9]">
-              {errored ? (
+          <div className="relative rounded-2xl border border-[--color-ink-100] bg-white shadow-sm overflow-hidden dark:bg-[--color-ink-900] dark:border-[--color-ink-700] order-2 lg:order-1">
+            <div className="relative aspect-[4/3] sm:aspect-[16/9] lg:aspect-auto lg:h-full lg:min-h-[480px]">
+              {framesErrored ? (
                 <div className="absolute inset-0 grid place-items-center p-8 text-sm text-[--color-ink-500]">
                   De radar is even niet bereikbaar — we proberen het
                   automatisch opnieuw.
@@ -72,6 +88,13 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 <MapMount frames={playable} />
               )}
             </div>
+          </div>
+          <div className="order-1 lg:order-2">
+            <LocationCard
+              locationName={DEFAULT_LOCATION.name}
+              rain={rain}
+              errorMessage={rainError}
+            />
           </div>
         </section>
       </main>

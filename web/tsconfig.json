@@ -1,9 +1,12 @@
 {
   "include": [
-    "**/*",
+    "app/**/*",
+    "tests/**/*",
     "**/.server/**/*",
     "**/.client/**/*",
-    ".react-router/types/**/*"
+    ".react-router/types/**/*",
+    "react-router.config.ts",
+    "vite.config.ts"
   ],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
