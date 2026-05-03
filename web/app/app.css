@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  /* OpenWeer palette — restrained Dutch design language. */
+  --color-sky-50: oklch(0.97 0.02 240);
+  --color-ink-50: oklch(0.98 0.005 250);
+  --color-ink-100: oklch(0.95 0.01 250);
+  --color-ink-200: oklch(0.88 0.015 250);
+  --color-ink-500: oklch(0.55 0.02 250);
+  --color-ink-700: oklch(0.32 0.02 250);
+  --color-ink-900: oklch(0.16 0.02 250);
+  --color-accent-500: oklch(0.62 0.18 240);
+  --color-accent-600: oklch(0.52 0.2 240);
+}
+
+html,
+body {
+  @apply bg-[--color-ink-50] text-[--color-ink-900] antialiased;
+  font-family: var(--font-sans);
+}
+
+/* Respect prefers-reduced-motion across the app. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Visible focus rings everywhere — WCAG 2.2 AA. */
+:focus-visible {
+  outline: 2px solid var(--color-accent-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  html,
+  body {
+    @apply bg-[--color-ink-900] text-[--color-ink-50];
+    color-scheme: dark;
+  }
+}
