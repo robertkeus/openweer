@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.python-version-local
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Node / web
+node_modules/
+.cache/
+.vite/
+.react-router/
+build/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Secrets & runtime data
+.env
+.env.local
+.env.*.local
+data/raw/
+data/incoming/
+data/tiles/
+data/tiles_staging/
+data/manifests/
+data/harmonie/
+
+# Local Docker overrides
+docker-compose.override.yml
