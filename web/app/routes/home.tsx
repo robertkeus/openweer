@@ -77,8 +77,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           aria-label="Regenvoorspelling en radar"
           className="mx-auto max-w-6xl px-4 sm:px-6 pb-16 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
         >
-          <div className="relative rounded-2xl border border-[--color-ink-100] bg-white shadow-sm overflow-hidden dark:bg-[--color-ink-900] dark:border-[--color-ink-700] order-2 lg:order-1">
-            <div className="relative aspect-[4/3] sm:aspect-[16/9] lg:aspect-auto lg:h-full lg:min-h-[480px]">
+          <div className="relative rounded-2xl border border-[--color-ink-100] bg-white shadow-sm overflow-hidden order-2 lg:order-1">
+            <div className="relative aspect-[4/3] sm:aspect-[16/9] lg:h-[560px]">
               {framesErrored ? (
                 <div className="absolute inset-0 grid place-items-center p-8 text-sm text-[--color-ink-500]">
                   De radar is even niet bereikbaar — we proberen het

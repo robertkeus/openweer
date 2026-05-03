@@ -16,10 +16,14 @@ interface Props {
 }
 
 const NL_CENTER: [number, number] = [5.3, 52.1];
+const NL_BOUNDS: [number, number, number, number] = [3.0, 50.6, 7.4, 53.7];
 const FRAME_INTERVAL_MS = 500;
 const FADE_MS = 220;
-const BASEMAP_STYLE =
-  "https://tiles.openfreemap.org/styles/positron";
+const BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
+
+// Tile coverage matches the backend (api/src/openweer/tiler/pipeline.py).
+const RADAR_MIN_ZOOM = 6;
+const RADAR_MAX_ZOOM = 10;
 
 export function RadarMap({ frames }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -94,6 +98,9 @@ export function RadarMap({ frames }: Props) {
         type: "raster",
         tiles: [tileUrlTemplate(frame)],
         tileSize: 256,
+        bounds: NL_BOUNDS,
+        minzoom: RADAR_MIN_ZOOM,
+        maxzoom: RADAR_MAX_ZOOM,
         attribution: "© KNMI",
       });
       m.addLayer({
@@ -133,14 +140,18 @@ export function RadarMap({ frames }: Props) {
     });
   }, [currentIndex, mapReady, frames]);
 
+  // MapLibre overrides `position` on its container, so we wrap it in our own
+  // absolutely-positioned box that defines the bounds.
   return (
-    <div className="relative isolate w-full h-full">
-      <div
-        ref={containerRef}
-        className="absolute inset-0"
-        aria-label="Regenradar Nederland"
-        role="region"
-      />
+    <>
+      <div className="absolute inset-0">
+        <div
+          ref={containerRef}
+          className="w-full h-full"
+          aria-label="Regenradar Nederland"
+          role="region"
+        />
+      </div>
       <div className="absolute inset-x-0 bottom-0 z-10">
         <TimeSlider
           frames={frames}
@@ -153,6 +164,6 @@ export function RadarMap({ frames }: Props) {
           onTogglePlay={() => setIsPlaying((p) => !p)}
         />
       </div>
-    </div>
+    </>
   );
 }

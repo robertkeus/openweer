@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Light theme is the only theme in v1 — keeps colors predictable across the
+   product surface. A dark mode toggle is a v2 feature. */
+
 @theme {
   --font-sans:
     "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
@@ -17,10 +20,16 @@
   --color-accent-600: oklch(0.52 0.2 240);
 }
 
-html,
+html {
+  color-scheme: light;
+  background: var(--color-ink-50);
+}
+
 body {
-  @apply bg-[--color-ink-50] text-[--color-ink-900] antialiased;
+  background: var(--color-ink-50);
+  color: var(--color-ink-900);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Respect prefers-reduced-motion across the app. */
@@ -39,12 +48,4 @@ body {
   outline: 2px solid var(--color-accent-600);
   outline-offset: 2px;
   border-radius: 4px;
-}
-
-@media (prefers-color-scheme: dark) {
-  html,
-  body {
-    @apply bg-[--color-ink-900] text-[--color-ink-50];
-    color-scheme: dark;
-  }
 }

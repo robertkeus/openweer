@@ -141,9 +141,7 @@ export function RainSummary({ samples }: SummaryProps) {
         <p className="text-[--color-ink-500] uppercase text-xs tracking-wider">
           Verwachting
         </p>
-        <p className="text-base font-medium text-[--color-ink-900] dark:text-[--color-ink-50]">
-          {headline}
-        </p>
+        <p className="text-base font-medium text-[--color-ink-900]">{headline}</p>
       </div>
       <div>
         <p className="text-[--color-ink-500] uppercase text-xs tracking-wider">

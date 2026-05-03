@@ -15,7 +15,7 @@ interface Props {
 
 export function LocationCard({ locationName, rain, errorMessage }: Props) {
   return (
-    <div className="rounded-2xl border border-[--color-ink-100] bg-white p-5 sm:p-6 shadow-sm dark:bg-[--color-ink-900] dark:border-[--color-ink-700]">
+    <div className="rounded-2xl border border-[--color-ink-100] bg-white p-5 sm:p-6 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium uppercase tracking-wider text-[--color-accent-600]">

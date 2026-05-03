@@ -59,7 +59,7 @@ export function TimeSlider({
   }
 
   return (
-    <div className="px-4 sm:px-6 py-4 bg-white/95 dark:bg-[--color-ink-900]/95 backdrop-blur border-t border-[--color-ink-100] dark:border-[--color-ink-700]">
+    <div className="px-4 sm:px-6 py-4 bg-white/95 backdrop-blur border-t border-[--color-ink-100]">
       <div className="flex items-center justify-between gap-4 mb-3">
         <button
           type="button"
@@ -71,7 +71,7 @@ export function TimeSlider({
           {isPlaying ? <PauseIcon /> : <PlayIcon />}
           <span>{isPlaying ? "Pauze" : "Afspelen"}</span>
         </button>
-        <div className="text-sm tabular-nums text-[--color-ink-700] dark:text-[--color-ink-100]">
+        <div className="text-sm tabular-nums text-[--color-ink-700]">
           <span className="font-medium">{formatHm(current.ts)}</span>
           <span className="ml-2 text-[--color-ink-500]">
             ({formatRelativeOffset(minutesFromNow)} · {FRAME_LABELS[current.kind]})

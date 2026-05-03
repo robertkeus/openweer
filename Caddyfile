@@ -1,0 +1,70 @@
+# OpenWeer Caddyfile
+# In dev (docker compose up): exposes http://localhost on port 80, no TLS.
+# In prod: change `:80` to `openweer.nl, www.openweer.nl` and Caddy will
+# auto-provision Let's Encrypt certificates.
+
+{
+	# Disable the admin API in prod — local-only by default.
+	admin off
+	# Sensible defaults for served static files.
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+:80 {
+	# ---- Security headers (OWASP A05) — applied to every response ----
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		# Hide upstream banners.
+		-Server
+	}
+
+	# ---- Pre-rendered radar tiles (served straight from the bind-mount) ----
+	# Bypasses the API entirely. CDN-friendly cache headers.
+	@tiles path /tiles/*
+	handle @tiles {
+		root * /var/openweer
+		header Cache-Control "public, max-age=300, stale-while-revalidate=900"
+		header Content-Security-Policy "default-src 'none'; img-src 'self'"
+		file_server
+	}
+
+	# ---- API → FastAPI ----
+	@api path /api/*
+	handle @api {
+		reverse_proxy api:8000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+
+	# ---- Static favicon (a quick win for first paint) ----
+	@favicon path /favicon.svg /favicon.ico
+	handle @favicon {
+		header Cache-Control "public, max-age=86400"
+		reverse_proxy web:3000
+	}
+
+	# ---- Everything else → React Router SSR server ----
+	handle {
+		# Reasonable CSP for the SSR'd app: allow MapLibre tiles and the
+		# Inter web font, deny inline-script (RR doesn't need it).
+		header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tiles.openfreemap.org https://*.amazonaws.com; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://tiles.openfreemap.org; frame-ancestors 'none'; base-uri 'self'"
+		reverse_proxy web:3000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+
+	encode gzip zstd
+	log {
+		format json
+		output stdout
+	}
+}

@@ -37,7 +37,7 @@ function MapSkeleton({ frameCount }: { frameCount: number }) {
     <div
       role="status"
       aria-label="Kaart wordt geladen"
-      className="absolute inset-0 grid place-items-center text-sm text-[--color-ink-500] bg-gradient-to-br from-sky-50 via-white to-white dark:from-[--color-ink-900] dark:via-[--color-ink-900] dark:to-[--color-ink-900]"
+      className="absolute inset-0 grid place-items-center text-sm text-[--color-ink-500] bg-gradient-to-br from-sky-50 via-white to-white"
     >
       <div className="text-center space-y-2">
         <SpinnerIcon className="mx-auto h-6 w-6 animate-spin text-[--color-accent-600]" />

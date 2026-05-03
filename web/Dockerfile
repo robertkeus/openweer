@@ -1,22 +1,30 @@
-FROM node:20-alpine AS development-dependencies-env
-COPY . /app
-WORKDIR /app
-RUN npm ci
+# syntax=docker/dockerfile:1.7
 
-FROM node:20-alpine AS production-dependencies-env
-COPY ./package.json package-lock.json /app/
+# ---------- deps & build ----------
+FROM node:22-alpine AS deps
 WORKDIR /app
-RUN npm ci --omit=dev
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
-FROM node:20-alpine AS build-env
-COPY . /app/
-COPY --from=development-dependencies-env /app/node_modules /app/node_modules
+FROM node:22-alpine AS build
 WORKDIR /app
-RUN npm run build
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build && npm prune --omit=dev
 
-FROM node:20-alpine
-COPY ./package.json package-lock.json /app/
-COPY --from=production-dependencies-env /app/node_modules /app/node_modules
-COPY --from=build-env /app/build /app/build
+# ---------- runtime ----------
+FROM node:22-alpine AS runtime
 WORKDIR /app
+RUN addgroup -g 1001 openweer && adduser -D -u 1001 -G openweer openweer
+
+COPY --from=build /app/package.json /app/package-lock.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/build ./build
+
+USER openweer
+EXPOSE 3000
+
+# react-router-serve listens on $PORT (default 3000).
+ENV PORT=3000
 CMD ["npm", "run", "start"]

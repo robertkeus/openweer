@@ -1,0 +1,80 @@
+# OpenWeer — single-VPS docker-compose stack.
+#
+# Services:
+#   - ingest:  Subscribes to KNMI MQTT, downloads files to data/raw/.
+#   - tiler:   Watches data/raw/, renders PNG XYZ tiles into data/tiles/.
+#   - api:     FastAPI JSON endpoints (and the dev-mode /tiles/* mount).
+#   - web:     React Router v7 SSR server.
+#   - caddy:   Reverse proxy + TLS + tile static-file server.
+#
+# All Python services share the same image (api/Dockerfile) and override
+# the entrypoint command. data/ is a single host bind-mount used by all
+# services (ingest writes, tiler reads & writes, api+caddy read).
+
+x-python-base: &python-base
+  build:
+    context: ./api
+    dockerfile: Dockerfile
+  env_file: ./.env
+  environment:
+    OPENWEER_DATA_DIR: /data
+    OPENWEER_LOG_LEVEL: ${OPENWEER_LOG_LEVEL:-INFO}
+  volumes:
+    - openweer-data:/data
+  restart: unless-stopped
+
+services:
+  ingest:
+    <<: *python-base
+    command: ["python", "-m", "openweer.ingest"]
+
+  tiler:
+    <<: *python-base
+    command: ["python", "-m", "openweer.tiler"]
+    depends_on:
+      - ingest
+
+  api:
+    <<: *python-base
+    expose: ["8000"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2).status==200 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    expose: ["3000"]
+    environment:
+      OPENWEER_INTERNAL_API_URL: http://api:8000
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://localhost}
+      NODE_ENV: production
+      PORT: "3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.8-alpine
+    ports:
+      - "80:80"
+      # Uncomment in prod for HTTPS:
+      # - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - openweer-data:/var/openweer:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - web
+    restart: unless-stopped
+
+volumes:
+  openweer-data:
+  caddy-data:
+  caddy-config:

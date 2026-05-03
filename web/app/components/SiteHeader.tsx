@@ -2,7 +2,7 @@ import { Link } from "react-router";
 
 export function SiteHeader() {
   return (
-    <header className="border-b border-[--color-ink-100]/60 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-[--color-ink-900]/60">
+    <header className="border-b border-[--color-ink-100]/60 backdrop-blur supports-[backdrop-filter]:bg-white/70 bg-white">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-3 flex items-center justify-between">
         <Link
           to="/"
