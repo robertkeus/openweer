@@ -1,41 +1,52 @@
 /**
  * RadarMap — MapLibre multi-source animation, client-only.
  *
- * The animation pattern (one raster source per timestep, swap visibility via
- * `raster-opacity-transition`) avoids the cache-invalidation flicker that
- * happens with a single templated tile URL — see step-5b research notes.
+ * Pure rendering component. Slider state and the current frame index are
+ * owned by the route via `useRadarTimeline`; the map only needs the frame
+ * list and which index is currently visible.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Frame } from "~/lib/api";
-import { findCurrentIndex, tileUrlTemplate } from "~/lib/frames";
-import { TimeSlider } from "./TimeSlider";
+import { tileUrlTemplate } from "~/lib/frames";
 
 interface Props {
   frames: Frame[];
+  currentIndex: number;
+  /** Optional center the map should fly to. */
+  center?: { lat: number; lon: number };
+  className?: string;
 }
 
 const NL_CENTER: [number, number] = [5.3, 52.1];
 const NL_BOUNDS: [number, number, number, number] = [3.0, 50.6, 7.4, 53.7];
-const FRAME_INTERVAL_MS = 500;
 const FADE_MS = 220;
-const BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
+const BASEMAP_LIGHT = "https://tiles.openfreemap.org/styles/positron";
+// OpenFreeMap doesn't publish a dark style; CARTO's dark-matter is freely
+// hosted and attribution-compatible.
+const BASEMAP_DARK =
+  "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
-// Tile coverage matches the backend (api/src/openweer/tiler/pipeline.py).
+function basemapStyle(isDark: boolean): string {
+  return isDark ? BASEMAP_DARK : BASEMAP_LIGHT;
+}
+
+function isDocumentDark(): boolean {
+  return typeof document !== "undefined" &&
+    document.documentElement.classList.contains("dark");
+}
+
 const RADAR_MIN_ZOOM = 6;
 const RADAR_MAX_ZOOM = 10;
 
-export function RadarMap({ frames }: Props) {
+export function RadarMap({
+  frames,
+  currentIndex,
+  center,
+  className = "absolute inset-0",
+}: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  // Use unknown so we don't import MapLibre types into the SSR bundle.
   const mapRef = useRef<unknown>(null);
-  const playableFramesRef = useRef<Frame[]>([]);
-
-  // Anchor the slider at the frame closest to wall-clock time so users see
-  // the current observation first, then can press play to scrub the forecast.
-  const initialIndex = useMemo(() => findCurrentIndex(frames), [frames]);
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [mapReady, setMapReady] = useState(false);
 
   // ---- 1) Mount the map once ----
@@ -51,8 +62,8 @@ export function RadarMap({ frames }: Props) {
 
       map = new maplibre.Map({
         container: containerRef.current,
-        style: BASEMAP_STYLE,
-        center: NL_CENTER,
+        style: basemapStyle(isDocumentDark()),
+        center: center ? [center.lon, center.lat] : NL_CENTER,
         zoom: 7,
         minZoom: 5,
         maxZoom: 10,
@@ -65,12 +76,11 @@ export function RadarMap({ frames }: Props) {
       m.addControl(
         new maplibre.AttributionControl({
           customAttribution:
-            'Radar © <a href="https://www.knmi.nl">KNMI</a> · Kaart © <a href="https://openfreemap.org">OpenFreeMap</a>',
+            'Radar © <a href="https://www.knmi.nl">KNMI</a> · Kaart © <a href="https://openfreemap.org">OpenFreeMap</a> / <a href="https://carto.com/attributions">CARTO</a>',
           compact: true,
         }),
         "bottom-right",
       );
-      m.addControl(new maplibre.NavigationControl({ showCompass: false }), "top-right");
 
       m.once("load", () => {
         if (!cancelled) setMapReady(true);
@@ -83,17 +93,23 @@ export function RadarMap({ frames }: Props) {
       m?.remove?.();
       mapRef.current = null;
     };
+    // Center change is handled by a separate effect — we don't remount the map.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ---- 2) Add one raster source/layer per frame after the basemap is ready ----
   useEffect(() => {
     if (!mapReady) return;
     const m = mapRef.current as
-      | { addSource: Function; addLayer: Function; getSource: Function; setPaintProperty: Function }
+      | {
+          addSource: Function;
+          addLayer: Function;
+          getSource: Function;
+          setPaintProperty: Function;
+        }
       | null;
     if (!m || !frames.length) return;
 
-    playableFramesRef.current = frames;
     frames.forEach((frame, i) => {
       const sourceId = `radar-${frame.id}`;
       if (m.getSource(sourceId)) return;
@@ -111,32 +127,15 @@ export function RadarMap({ frames }: Props) {
         type: "raster",
         source: sourceId,
         paint: {
-          "raster-opacity": i === initialIndex ? 1 : 0,
+          "raster-opacity": i === currentIndex ? 1 : 0,
           "raster-opacity-transition": { duration: FADE_MS },
           "raster-fade-duration": 0,
         },
       });
     });
-  }, [mapReady, frames, initialIndex]);
+  }, [mapReady, frames, currentIndex]);
 
-  // ---- 3) Animation loop. When it reaches the last frame we pause and
-  // settle back at "now" so the slider doesn't cycle forever. ----
-  useEffect(() => {
-    if (!mapReady || !isPlaying || frames.length < 2) return;
-    const id = setInterval(() => {
-      setCurrentIndex((prev) => {
-        const next = prev + 1;
-        if (next >= frames.length) {
-          setIsPlaying(false);
-          return initialIndex;
-        }
-        return next;
-      });
-    }, FRAME_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [mapReady, isPlaying, frames.length, initialIndex]);
-
-  // ---- 4) On every index change, fade the previous out, the new one in ----
+  // ---- 3) On every index change, fade the previous out, the new one in ----
   useEffect(() => {
     if (!mapReady) return;
     const m = mapRef.current as { setPaintProperty: Function } | null;
@@ -150,37 +149,49 @@ export function RadarMap({ frames }: Props) {
     });
   }, [currentIndex, mapReady, frames]);
 
-  // MapLibre overrides `position` on its container, so we wrap it in our own
-  // absolutely-positioned box that defines the bounds.
+  // ---- 4) Fly to a new center when the parent updates the location ----
+  useEffect(() => {
+    if (!mapReady || !center) return;
+    const m = mapRef.current as
+      | { flyTo: (opts: { center: [number, number]; zoom?: number }) => void }
+      | null;
+    m?.flyTo({ center: [center.lon, center.lat], zoom: 9 });
+  }, [mapReady, center?.lat, center?.lon]);
+
+  // ---- 5) Swap basemap style when the dark class flips on <html> ----
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    let lastDark = root.classList.contains("dark");
+    const observer = new MutationObserver(() => {
+      const nextDark = root.classList.contains("dark");
+      if (nextDark === lastDark) return;
+      lastDark = nextDark;
+      const m = mapRef.current as
+        | {
+            setStyle: (s: string) => void;
+            once: (ev: string, cb: () => void) => void;
+          }
+        | null;
+      if (!m) return;
+      // setStyle wipes sources/layers — flip mapReady so the source-adding
+      // effect (#2) re-runs once the new style finishes loading.
+      setMapReady(false);
+      m.setStyle(basemapStyle(nextDark));
+      m.once("style.load", () => setMapReady(true));
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <>
-      <div className="absolute inset-0">
-        <div
-          ref={containerRef}
-          className="w-full h-full"
-          aria-label="Regenradar Nederland"
-          role="region"
-        />
-      </div>
-      <div className="absolute inset-x-0 bottom-0 z-10">
-        <TimeSlider
-          frames={frames}
-          currentIndex={currentIndex}
-          nowIndex={initialIndex}
-          isPlaying={isPlaying}
-          onSeek={(i) => {
-            setIsPlaying(false);
-            setCurrentIndex(i);
-          }}
-          onTogglePlay={() => {
-            // After a finished cycle, tapping play restarts from "now".
-            if (!isPlaying && currentIndex >= frames.length - 1) {
-              setCurrentIndex(initialIndex);
-            }
-            setIsPlaying((p) => !p);
-          }}
-        />
-      </div>
-    </>
+    <div className={className}>
+      <div
+        ref={containerRef}
+        className="w-full h-full"
+        aria-label="Regenradar Nederland"
+        role="region"
+      />
+    </div>
   );
 }

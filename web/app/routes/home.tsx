@@ -1,14 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router";
 import type { Route } from "./+types/home";
 import { ApiError, api, type RainResponse } from "~/lib/api";
+import { CurrentTimeChip } from "~/components/CurrentTimeChip";
 import { LocationBar, type SelectedLocation } from "~/components/LocationBar";
+import { LocationConsent } from "~/components/LocationConsent";
+import { Logo } from "~/components/Logo";
 import { MapMount } from "~/components/MapMount";
-import { RainForecastCard } from "~/components/RainForecastCard";
-import { SiteFooter } from "~/components/SiteFooter";
-import { SiteHeader } from "~/components/SiteHeader";
+import { RainGraph, RainSummary } from "~/components/RainGraph";
+import { RainLegend } from "~/components/RainLegend";
+import { RainSheet } from "~/components/RainSheet";
+import { RecenterButton } from "~/components/RecenterButton";
+import { ThemeToggle } from "~/components/ThemeToggle";
+import { TimeSlider } from "~/components/TimeSlider";
 import { WeatherNowCard } from "~/components/WeatherNowCard";
-import { defaultPlayableFrames } from "~/lib/frames";
 import { DEFAULT_LOCATION } from "~/lib/locations";
+import { useGeolocation } from "~/lib/use-geolocation";
+import { useRadarTimeline } from "~/lib/use-radar-timeline";
 
 export function meta() {
   return [
@@ -45,12 +53,23 @@ export async function loader() {
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   const { frames, framesErrored, rain: initialRain, rainError } = loaderData;
-  const playable = defaultPlayableFrames(frames.frames);
 
   const [location, setLocation] = useState<SelectedLocation>(DEFAULT_LOCATION);
   const [rain, setRain] = useState<RainResponse | null>(initialRain);
   const [rainLoading, setRainLoading] = useState(false);
   const [rainErrMsg, setRainErrMsg] = useState<string | undefined>(rainError);
+  const [consentDismissed, setConsentDismissed] = useState(false);
+
+  const timeline = useRadarTimeline(frames.frames);
+
+  const consent = useGeolocation((loc) => {
+    setLocation(loc);
+    setConsentDismissed(true);
+  });
+  const showConsent =
+    !consentDismissed &&
+    location.lat === DEFAULT_LOCATION.lat &&
+    location.lon === DEFAULT_LOCATION.lon;
 
   const refetchRain = useCallback(
     async (lat: number, lon: number, signal: AbortSignal) => {
@@ -79,7 +98,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       location.lat === DEFAULT_LOCATION.lat &&
       location.lon === DEFAULT_LOCATION.lon
     ) {
-      // The SSR loader already filled `rain` for the default location.
       return;
     }
     const ctrl = new AbortController();
@@ -88,79 +106,110 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   }, [location.lat, location.lon, refetchRain]);
 
   return (
-    <>
-      <SiteHeader />
-      <main className="flex-1">
-        <section
-          aria-label="Plaats kiezen"
-          className="mx-auto max-w-6xl px-4 sm:px-6 pt-6 sm:pt-8"
-        >
-          <LocationBar current={location} onSelect={setLocation} />
-        </section>
-
-        <section
-          aria-labelledby="hero-title"
-          className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 pb-4"
-        >
-          <p className="text-xs uppercase tracking-[0.22em] text-[--color-accent-600] font-semibold">
-            Regenradar Nederland
-          </p>
-          <h1
-            id="hero-title"
-            className="mt-2 text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.05]"
-          >
-            Hoe laat valt er regen?
-          </h1>
-          <p className="mt-3 text-base sm:text-lg text-[--color-ink-700] max-w-2xl">
-            Open weerplatform voor Nederland. Data direct van het{" "}
-            <a
-              href="https://www.knmi.nl"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-4 hover:text-[--color-accent-600]"
-            >
-              KNMI
-            </a>
-            , elke 5 minuten ververst.
-          </p>
-        </section>
-
-        <section
-          aria-label="Regenradar"
-          className="mx-auto max-w-6xl px-4 sm:px-6 pb-6"
-        >
-          <div className="relative w-full rounded-3xl border border-[--color-ink-100] bg-white shadow-sm overflow-hidden">
-            <div className="relative w-full aspect-[16/10] sm:aspect-[16/7] lg:aspect-[21/9]">
-              {framesErrored ? (
-                <div className="absolute inset-0 grid place-items-center p-8 text-sm text-[--color-ink-500]">
-                  De radar is even niet bereikbaar — we proberen het
-                  automatisch opnieuw.
-                </div>
-              ) : (
-                <MapMount frames={playable} />
-              )}
-            </div>
+    <div className="map-shell fixed inset-0 overflow-hidden">
+      {/* Map fills the viewport. */}
+      <div className="absolute inset-0">
+        {framesErrored ? (
+          <div className="absolute inset-0 grid place-items-center p-8 text-sm text-[--color-ink-500] bg-gradient-to-br from-sky-50 via-white to-white">
+            De radar is even niet bereikbaar — we proberen het automatisch
+            opnieuw.
           </div>
-        </section>
+        ) : (
+          <MapMount
+            frames={timeline.frames}
+            currentIndex={timeline.currentIndex}
+            center={{ lat: location.lat, lon: location.lon }}
+            className="absolute inset-0"
+          />
+        )}
+      </div>
 
-        <section
-          aria-label="Weersinformatie"
-          className="mx-auto max-w-6xl px-4 sm:px-6 pb-16 grid gap-4 lg:grid-cols-2"
-        >
+      {/* Top: logo + location bar (left, capped) + current-time chip (right). */}
+      <div className="pointer-events-none absolute inset-x-0 top-3 sm:top-4 z-20 px-3 sm:px-4 flex flex-col items-stretch gap-2 sm:gap-3">
+        <div className="flex items-start gap-2 sm:gap-3">
+          <Link
+            to="/"
+            aria-label="OpenWeer"
+            title="OpenWeer"
+            className="pointer-events-auto floating-btn group flex-none"
+          >
+            <Logo className="h-6 w-6" aria-hidden="true" />
+          </Link>
+          <div className="pointer-events-auto flex-1 min-w-0 max-w-md sm:max-w-lg">
+            <LocationBar current={location} onSelect={setLocation} />
+          </div>
+          <div className="pointer-events-auto flex-none ml-auto">
+            <CurrentTimeChip
+              frame={timeline.current}
+              sample={rain?.samples[0]}
+            />
+          </div>
+          <div className="pointer-events-auto flex-none">
+            <ThemeToggle variant="floating" />
+          </div>
+        </div>
+        {showConsent ? (
+          <div className="pointer-events-auto self-center w-full max-w-xl">
+            <LocationConsent
+              onAccept={() => {
+                void consent.resolve();
+              }}
+              onDismiss={() => setConsentDismissed(true)}
+              resolving={consent.resolving}
+              error={consent.error}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      {/* Mobile-only recenter button (desktop relies on the crosshair inside the location bar). */}
+      <div className="lg:hidden pointer-events-none absolute right-3 bottom-[calc(var(--sheet-peek)+1rem)] z-20">
+        <div className="pointer-events-auto">
+          <RecenterButton onLocate={setLocation} />
+        </div>
+      </div>
+
+      {/* Bottom: rain sheet (mobile + desktop variants live inside). */}
+      <RainSheet
+        peek={
+          <div className="pt-2 space-y-3">
+            <TimeSlider
+              frames={timeline.frames}
+              currentIndex={timeline.currentIndex}
+              nowIndex={timeline.nowIndex}
+              isPlaying={timeline.isPlaying}
+              onSeek={timeline.seek}
+              onTogglePlay={timeline.togglePlay}
+            />
+            {rainErrMsg ? (
+              <p className="text-sm text-[--color-ink-500]">{rainErrMsg}</p>
+            ) : rainLoading ? (
+              <p className="text-sm text-[--color-ink-500]">
+                Voorspelling laden…
+              </p>
+            ) : rain && rain.samples.length ? (
+              <>
+                <RainSummary samples={rain.samples} />
+                <div className="text-[--color-accent-600]">
+                  <RainGraph samples={rain.samples} height={110} />
+                </div>
+                <RainLegend />
+              </>
+            ) : (
+              <p className="text-sm text-[--color-ink-500]">
+                Geen voorspelling beschikbaar.
+              </p>
+            )}
+          </div>
+        }
+        expanded={
           <WeatherNowCard
             locationName={location.name}
             rain={rain}
             loading={rainLoading}
           />
-          <RainForecastCard
-            locationName={location.name}
-            rain={rain}
-            loading={rainLoading}
-            errorMessage={rainErrMsg}
-          />
-        </section>
-      </main>
-      <SiteFooter />
-    </>
+        }
+      />
+    </div>
   );
 }

@@ -19,7 +19,7 @@ const FRAMES: Frame[] = [
 ];
 
 describe("TimeSlider", () => {
-  it("renders the current frame's time", () => {
+  it("renders a play button at rest", () => {
     render(
       <TimeSlider
         frames={FRAMES}
@@ -29,9 +29,7 @@ describe("TimeSlider", () => {
         onTogglePlay={() => {}}
       />,
     );
-    expect(screen.getByText(/Afspelen/)).toBeInTheDocument();
-    // 06:30 UTC == 08:30 Europe/Amsterdam (CEST in May)
-    expect(screen.getByText(/08:30/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Speel af/ })).toBeInTheDocument();
   });
 
   it("calls onSeek when slider changes", () => {
@@ -76,7 +74,9 @@ describe("TimeSlider", () => {
         onTogglePlay={() => {}}
       />,
     );
-    expect(screen.getByRole("button", { name: /Pauzeer/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Pauzeer/ }),
+    ).toBeInTheDocument();
   });
 
   it("renders nothing when there are no frames", () => {
@@ -90,5 +90,23 @@ describe("TimeSlider", () => {
       />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("exposes the current frame's time as the slider's aria-valuetext", () => {
+    render(
+      <TimeSlider
+        frames={FRAMES}
+        currentIndex={1}
+        nowIndex={1}
+        isPlaying={false}
+        onSeek={() => {}}
+        onTogglePlay={() => {}}
+      />,
+    );
+    // 06:30 UTC == 08:30 Europe/Amsterdam (CEST in May)
+    const valueText = screen
+      .getByRole("slider")
+      .getAttribute("aria-valuetext");
+    expect(valueText).toContain("08:30");
   });
 });

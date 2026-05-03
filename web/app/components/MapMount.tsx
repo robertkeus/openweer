@@ -11,10 +11,15 @@ import type { Frame } from "~/lib/api";
 
 interface Props {
   frames: Frame[];
+  currentIndex: number;
+  center?: { lat: number; lon: number };
+  className?: string;
 }
 
-export function MapMount({ frames }: Props) {
-  const [Component, setComponent] = useState<React.ComponentType<Props> | null>(null);
+export function MapMount(props: Props) {
+  const [Component, setComponent] = useState<React.ComponentType<Props> | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -27,17 +32,28 @@ export function MapMount({ frames }: Props) {
   }, []);
 
   if (!Component) {
-    return <MapSkeleton frameCount={frames.length} />;
+    return (
+      <MapSkeleton
+        frameCount={props.frames.length}
+        className={props.className}
+      />
+    );
   }
-  return <Component frames={frames} />;
+  return <Component {...props} />;
 }
 
-function MapSkeleton({ frameCount }: { frameCount: number }) {
+function MapSkeleton({
+  frameCount,
+  className = "absolute inset-0",
+}: {
+  frameCount: number;
+  className?: string;
+}) {
   return (
     <div
       role="status"
       aria-label="Kaart wordt geladen"
-      className="absolute inset-0 grid place-items-center text-sm text-[--color-ink-500] bg-gradient-to-br from-sky-50 via-white to-white"
+      className={`${className} grid place-items-center text-sm text-[--color-ink-500] bg-gradient-to-br from-sky-50 via-white to-white`}
     >
       <div className="text-center space-y-2">
         <SpinnerIcon className="mx-auto h-6 w-6 animate-spin text-[--color-accent-600]" />

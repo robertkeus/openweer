@@ -26,7 +26,7 @@ export function WeatherNowCard({ locationName, rain, loading }: Props) {
   return (
     <article
       aria-label={`Actueel weer in ${locationName}`}
-      className="rounded-3xl border border-[--color-ink-100] bg-white p-6 sm:p-7 shadow-sm overflow-hidden relative"
+      className="rounded-3xl border border-[--color-border] bg-[--color-surface] p-6 sm:p-7 shadow-sm overflow-hidden relative"
     >
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -59,11 +59,11 @@ export function WeatherNowCard({ locationName, rain, loading }: Props) {
             : "Nog geen radardata."}
       </p>
 
-      <hr className="my-6 border-[--color-ink-100]" />
+      <hr className="my-6 border-[--color-border]" />
 
       <dl className="grid grid-cols-2 gap-4 text-sm">
         <div>
-          <dt className="text-[--color-ink-500] uppercase text-xs tracking-wider">
+          <dt className="text-[--color-ink-700] uppercase text-xs tracking-wider">
             Komende 2 uur
           </dt>
           <dd className="mt-1 font-medium text-[--color-ink-900]">
@@ -77,7 +77,7 @@ export function WeatherNowCard({ locationName, rain, loading }: Props) {
           </dd>
         </div>
         <div>
-          <dt className="text-[--color-ink-500] uppercase text-xs tracking-wider">
+          <dt className="text-[--color-ink-700] uppercase text-xs tracking-wider">
             Piek
           </dt>
           <dd className="mt-1 font-medium tabular-nums">
@@ -101,10 +101,26 @@ function VerdictBadge({
   verdict: "droog" | "licht" | "matig" | "zwaar";
 }) {
   const styles: Record<typeof verdict, { bg: string; fg: string; label: string }> = {
-    droog: { bg: "bg-emerald-50", fg: "text-emerald-700", label: "Droog" },
-    licht: { bg: "bg-sky-50", fg: "text-sky-700", label: "Lichte regen" },
-    matig: { bg: "bg-amber-50", fg: "text-amber-700", label: "Matige regen" },
-    zwaar: { bg: "bg-rose-50", fg: "text-rose-700", label: "Zware buien" },
+    droog: {
+      bg: "bg-emerald-50 dark:bg-emerald-900/40",
+      fg: "text-emerald-700 dark:text-emerald-200",
+      label: "Droog",
+    },
+    licht: {
+      bg: "bg-sky-50 dark:bg-sky-900/40",
+      fg: "text-sky-700 dark:text-sky-200",
+      label: "Lichte regen",
+    },
+    matig: {
+      bg: "bg-amber-50 dark:bg-amber-900/40",
+      fg: "text-amber-700 dark:text-amber-200",
+      label: "Matige regen",
+    },
+    zwaar: {
+      bg: "bg-rose-50 dark:bg-rose-900/40",
+      fg: "text-rose-700 dark:text-rose-200",
+      label: "Zware buien",
+    },
   };
   const s = styles[verdict];
   return (

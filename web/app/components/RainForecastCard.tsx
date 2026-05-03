@@ -22,7 +22,7 @@ export function RainForecastCard({
   return (
     <article
       aria-label={`Regenvoorspelling voor ${locationName}`}
-      className="rounded-3xl border border-[--color-ink-100] bg-white p-6 sm:p-7 shadow-sm"
+      className="rounded-3xl border border-[--color-border] bg-[--color-surface] p-6 sm:p-7 shadow-sm"
     >
       <div className="flex items-center justify-between gap-3">
         <div>

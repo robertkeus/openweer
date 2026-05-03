@@ -48,6 +48,15 @@ export function findCurrentIndex(playable: readonly Frame[]): number {
   return best;
 }
 
+export function findNowAnchor(playable: readonly Frame[]): number {
+  /**
+   * "Now" anchor — the frame whose timestamp is closest to the user's
+   * wall-clock time. Matches the user's expectation that the slider
+   * starts at the current moment.
+   */
+  return findCurrentIndex(playable);
+}
+
 function byTs(a: Frame, b: Frame): number {
   return new Date(a.ts).getTime() - new Date(b.ts).getTime();
 }

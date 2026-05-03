@@ -23,7 +23,7 @@ function maxBound(samples: readonly RainSample[]): number {
 
 function colorFor(mm: number): string {
   // Mirrors the backend colormap stops at 0.1 / 0.5 / 1 / 2 / 5 / 10 / 20 / 50.
-  if (mm < 0.1) return "rgb(229,231,235)"; // gray-200
+  if (mm < 0.1) return "var(--color-no-rain)";
   if (mm < 0.5) return "rgb(155,195,241)";
   if (mm < 1.0) return "rgb(92,142,232)";
   if (mm < 2.0) return "rgb(31,93,208)";
@@ -107,7 +107,7 @@ export function RainGraph({ samples, height = 140 }: Props) {
           );
         })}
       </svg>
-      <figcaption className="mt-2 flex items-center justify-between text-xs text-[--color-ink-500]">
+      <figcaption className="mt-2 flex items-center justify-between text-xs text-[--color-ink-700]">
         <span>{formatHm(samples[0].valid_at)}</span>
         <span>nu &nbsp;→&nbsp; +2&nbsp;uur</span>
         <span>{formatHm(samples[samples.length - 1].valid_at)}</span>
@@ -138,24 +138,24 @@ export function RainSummary({ samples }: SummaryProps) {
   return (
     <div className="grid grid-cols-2 gap-4 text-sm">
       <div>
-        <p className="text-[--color-ink-500] uppercase text-xs tracking-wider">
+        <p className="text-[--color-ink-700] uppercase text-xs tracking-wider">
           Verwachting
         </p>
         <p className="text-base font-medium text-[--color-ink-900]">{headline}</p>
       </div>
       <div>
-        <p className="text-[--color-ink-500] uppercase text-xs tracking-wider">
+        <p className="text-[--color-ink-700] uppercase text-xs tracking-wider">
           Piekintensiteit
         </p>
         <p className="text-base font-medium tabular-nums">
           {formatMmPerHour(peak.mm_per_h)}{" "}
-          <span className="text-[--color-ink-500]">
+          <span className="text-[--color-ink-700]">
             ({formatHm(peak.valid_at)})
           </span>
         </p>
       </div>
       <div className="col-span-2">
-        <p className="text-[--color-ink-500] uppercase text-xs tracking-wider">
+        <p className="text-[--color-ink-700] uppercase text-xs tracking-wider">
           Totale verwachte neerslag
         </p>
         <p className="text-base font-medium tabular-nums">

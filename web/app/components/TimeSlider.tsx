@@ -37,14 +37,12 @@ export function TimeSlider({
         : (frames.find((f) => f.kind === "nowcast") ?? frames[0]);
     return new Date(anchor.ts).getTime();
   }, [frames, nowIndex]);
-  const atNow = typeof nowIndex === "number" && currentIndex === nowIndex;
 
   const minutesFromNow = useMemo(() => {
     if (!current || baseTs === null) return 0;
     return Math.round((new Date(current.ts).getTime() - baseTs) / 60000);
   }, [current, baseTs]);
 
-  // Keyboard shortcuts: ←/→ step, space toggles.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === " ") {
@@ -56,7 +54,10 @@ export function TimeSlider({
   );
 
   useEffect(() => {
-    sliderRef.current?.setAttribute("aria-valuetext", liveLabel(current, minutesFromNow));
+    sliderRef.current?.setAttribute(
+      "aria-valuetext",
+      liveLabel(current, minutesFromNow),
+    );
   }, [current, minutesFromNow]);
 
   if (!frames.length || !current) {
@@ -64,49 +65,115 @@ export function TimeSlider({
   }
 
   return (
-    <div className="px-4 sm:px-6 py-4 bg-white/95 backdrop-blur border-t border-[--color-ink-100]">
-      <div className="flex items-center justify-between gap-4 mb-3">
-        <button
-          type="button"
-          onClick={onTogglePlay}
-          className="inline-flex items-center gap-2 rounded-full bg-[--color-accent-600] hover:bg-[--color-accent-500] text-white px-4 py-2 text-sm font-medium shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--color-accent-500]"
-          aria-pressed={isPlaying}
-          aria-label={isPlaying ? "Pauzeer" : "Speel af"}
-        >
-          {isPlaying ? <PauseIcon /> : <PlayIcon />}
-          <span>{isPlaying ? "Pauze" : "Afspelen"}</span>
-        </button>
-        <div className="flex items-center gap-2 text-sm tabular-nums text-[--color-ink-700]">
-          {atNow ? (
-            <span
-              aria-label="Live"
-              className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 text-rose-700 px-2 py-0.5 text-xs font-semibold tracking-wide"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
-              Nu
-            </span>
-          ) : null}
-          <span className="font-medium">{formatHm(current.ts)}</span>
-          <span className="text-[--color-ink-500]">
-            {atNow ? "(observatie)" : `(${formatRelativeOffset(minutesFromNow)} · ${FRAME_LABELS[current.kind]})`}
-          </span>
-        </div>
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={onTogglePlay}
+        className="btn-primary inline-grid place-items-center h-10 w-10 rounded-full shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 flex-none"
+        aria-pressed={isPlaying}
+        aria-label={isPlaying ? "Pauzeer" : "Speel af"}
+      >
+        {isPlaying ? <PauseIcon /> : <PlayIcon />}
+      </button>
+      <div className="flex-1 flex flex-col gap-1.5">
+        <input
+          ref={sliderRef}
+          type="range"
+          min={0}
+          max={frames.length - 1}
+          step={1}
+          value={currentIndex}
+          onChange={(e) => onSeek(Number(e.target.value))}
+          onKeyDown={handleKeyDown}
+          className="w-full accent-[--color-accent-600]"
+          aria-label="Tijdkiezer voor de regenradar"
+          aria-valuemin={0}
+          aria-valuemax={frames.length - 1}
+          aria-valuenow={currentIndex}
+        />
+        <TimeTicks frames={frames} />
       </div>
-      <input
-        ref={sliderRef}
-        type="range"
-        min={0}
-        max={frames.length - 1}
-        step={1}
-        value={currentIndex}
-        onChange={(e) => onSeek(Number(e.target.value))}
-        onKeyDown={handleKeyDown}
-        className="w-full accent-[--color-accent-600]"
-        aria-label="Tijdkiezer voor de regenradar"
-        aria-valuemin={0}
-        aria-valuemax={frames.length - 1}
-        aria-valuenow={currentIndex}
-      />
+    </div>
+  );
+}
+
+const TEN_MIN_MS = 10 * 60 * 1000;
+
+interface Tick {
+  ts: number;
+  label: string;
+  pct: number;
+  isNow: boolean;
+  /** Major ticks (every 30 min) get a visible time label. */
+  isMajor: boolean;
+}
+
+function buildTenMinuteTicks(frames: Frame[], nowMs: number): Tick[] {
+  if (frames.length < 2) return [];
+  const startTs = new Date(frames[0].ts).getTime();
+  const endTs = new Date(frames[frames.length - 1].ts).getTime();
+  const span = endTs - startTs;
+  if (span <= 0) return [];
+  const first = Math.ceil(startTs / TEN_MIN_MS) * TEN_MIN_MS;
+  const ticks: Tick[] = [];
+  for (let t = first; t <= endTs; t += TEN_MIN_MS) {
+    const minute = new Date(t).getMinutes();
+    ticks.push({
+      ts: t,
+      label: formatHm(new Date(t).toISOString()),
+      pct: ((t - startTs) / span) * 100,
+      isNow: Math.abs(t - nowMs) < TEN_MIN_MS / 2,
+      isMajor: minute % 30 === 0,
+    });
+  }
+  return ticks;
+}
+
+/**
+ * Tick strip under the slider:
+ *  - vertical tick mark at every 10-minute boundary (rhythm)
+ *  - time label at every 30-minute boundary (legibility on narrow widths)
+ *  - "Nu" label highlighted at the current wall-clock time
+ */
+function TimeTicks({ frames }: { frames: Frame[] }) {
+  const ticks = useMemo(
+    () => buildTenMinuteTicks(frames, Date.now()),
+    [frames],
+  );
+  if (!ticks.length) return null;
+  return (
+    <div aria-hidden="true" className="relative h-5 mx-1.5 select-none">
+      {ticks.map((t) => {
+        const showLabel = t.isMajor || t.isNow;
+        return (
+          <span
+            key={t.ts}
+            className="absolute top-0 -translate-x-1/2 flex flex-col items-center gap-0.5 leading-none"
+            style={{ left: `${t.pct}%` }}
+          >
+            <span
+              className={`block w-px ${
+                t.isNow
+                  ? "h-2 bg-[--color-accent-600]"
+                  : t.isMajor
+                    ? "h-1.5 bg-[--color-ink-500]/60"
+                    : "h-1 bg-[--color-ink-500]/35"
+              }`}
+            />
+            {showLabel ? (
+              <span
+                className={`text-[10px] tabular-nums whitespace-nowrap ${
+                  t.isNow
+                    ? "font-semibold text-[--color-accent-600]"
+                    : "text-[--color-ink-500]"
+                }`}
+              >
+                {t.isNow ? "Nu" : t.label}
+              </span>
+            ) : null}
+          </span>
+        );
+      })}
     </div>
   );
 }
