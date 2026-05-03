@@ -9,16 +9,24 @@ import { z } from "zod";
 
 const isServer = typeof window === "undefined";
 
-const SERVER_BASE =
-  process.env.OPENWEER_INTERNAL_API_URL ??
-  process.env.OPENWEER_API_URL ??
-  "http://127.0.0.1:8000";
+/**
+ * Resolves the SSR-side base URL only when actually needed; `process.env`
+ * doesn't exist in the browser bundle, so we never touch it client-side.
+ */
+function serverBase(): string {
+  if (typeof process === "undefined" || !process.env) return "";
+  return (
+    process.env.OPENWEER_INTERNAL_API_URL ??
+    process.env.OPENWEER_API_URL ??
+    "http://127.0.0.1:8000"
+  );
+}
 
 function url(path: string): string {
   if (!path.startsWith("/")) {
     throw new Error(`API path must start with "/": ${path}`);
   }
-  return isServer ? `${SERVER_BASE}${path}` : path;
+  return isServer ? `${serverBase()}${path}` : path;
 }
 
 export class ApiError extends Error {

@@ -1,9 +1,12 @@
+import { useCallback, useEffect, useState } from "react";
 import type { Route } from "./+types/home";
-import { api, ApiError } from "~/lib/api";
-import { LocationCard } from "~/components/LocationCard";
+import { ApiError, api, type RainResponse } from "~/lib/api";
+import { LocationBar, type SelectedLocation } from "~/components/LocationBar";
 import { MapMount } from "~/components/MapMount";
+import { RainForecastCard } from "~/components/RainForecastCard";
 import { SiteFooter } from "~/components/SiteFooter";
 import { SiteHeader } from "~/components/SiteHeader";
+import { WeatherNowCard } from "~/components/WeatherNowCard";
 import { defaultPlayableFrames } from "~/lib/frames";
 import { DEFAULT_LOCATION } from "~/lib/locations";
 
@@ -19,9 +22,6 @@ export function meta() {
 }
 
 export async function loader() {
-  // SSR: fetch the manifest + the default-location rain forecast so the page
-  // has meaningful content before the client-side map mounts. Failures degrade
-  // gracefully (the page still renders).
   const [frames, rain] = await Promise.allSettled([
     api.frames(),
     api.rain(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon),
@@ -44,23 +44,75 @@ export async function loader() {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { frames, framesErrored, rain, rainError } = loaderData;
+  const { frames, framesErrored, rain: initialRain, rainError } = loaderData;
   const playable = defaultPlayableFrames(frames.frames);
+
+  const [location, setLocation] = useState<SelectedLocation>(DEFAULT_LOCATION);
+  const [rain, setRain] = useState<RainResponse | null>(initialRain);
+  const [rainLoading, setRainLoading] = useState(false);
+  const [rainErrMsg, setRainErrMsg] = useState<string | undefined>(rainError);
+
+  const refetchRain = useCallback(
+    async (lat: number, lon: number, signal: AbortSignal) => {
+      setRainLoading(true);
+      setRainErrMsg(undefined);
+      try {
+        const data = await api.rain(lat, lon);
+        if (!signal.aborted) setRain(data);
+      } catch (err) {
+        if (signal.aborted) return;
+        if (err instanceof ApiError && err.status === 503) {
+          setRainErrMsg("Nog geen radardata beschikbaar.");
+        } else {
+          setRainErrMsg("De voorspelling is even niet bereikbaar.");
+        }
+        setRain(null);
+      } finally {
+        if (!signal.aborted) setRainLoading(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (
+      location.lat === DEFAULT_LOCATION.lat &&
+      location.lon === DEFAULT_LOCATION.lon
+    ) {
+      // The SSR loader already filled `rain` for the default location.
+      return;
+    }
+    const ctrl = new AbortController();
+    refetchRain(location.lat, location.lon, ctrl.signal);
+    return () => ctrl.abort();
+  }, [location.lat, location.lon, refetchRain]);
 
   return (
     <>
       <SiteHeader />
       <main className="flex-1">
-        <section className="mx-auto max-w-6xl px-4 sm:px-6 pt-10 sm:pt-12 pb-6 sm:pb-8">
-          <p className="text-sm font-medium uppercase tracking-wider text-[--color-accent-600]">
+        <section
+          aria-label="Plaats kiezen"
+          className="mx-auto max-w-6xl px-4 sm:px-6 pt-6 sm:pt-8"
+        >
+          <LocationBar current={location} onSelect={setLocation} />
+        </section>
+
+        <section
+          aria-labelledby="hero-title"
+          className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 pb-4"
+        >
+          <p className="text-xs uppercase tracking-[0.22em] text-[--color-accent-600] font-semibold">
             Regenradar Nederland
           </p>
-          <h1 className="mt-2 text-4xl sm:text-5xl font-semibold tracking-tight leading-tight">
-            Hoe laat valt er regen op jouw plek?
+          <h1
+            id="hero-title"
+            className="mt-2 text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.05]"
+          >
+            Hoe laat valt er regen?
           </h1>
-          <p className="mt-4 text-lg text-[--color-ink-700] max-w-2xl">
-            Een open, snel en advertentievrij weerplatform voor Nederland.
-            Data komt rechtstreeks van het{" "}
+          <p className="mt-3 text-base sm:text-lg text-[--color-ink-700] max-w-2xl">
+            Open weerplatform voor Nederland. Data direct van het{" "}
             <a
               href="https://www.knmi.nl"
               target="_blank"
@@ -68,17 +120,17 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               className="underline underline-offset-4 hover:text-[--color-accent-600]"
             >
               KNMI
-            </a>{" "}
-            en wordt elke 5 minuten ververst.
+            </a>
+            , elke 5 minuten ververst.
           </p>
         </section>
 
         <section
-          aria-label="Regenvoorspelling en radar"
-          className="mx-auto max-w-6xl px-4 sm:px-6 pb-16 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
+          aria-label="Regenradar"
+          className="mx-auto max-w-6xl px-4 sm:px-6 pb-6"
         >
-          <div className="relative rounded-2xl border border-[--color-ink-100] bg-white shadow-sm overflow-hidden order-2 lg:order-1">
-            <div className="relative aspect-[4/3] sm:aspect-[16/9] lg:h-[560px]">
+          <div className="relative w-full rounded-3xl border border-[--color-ink-100] bg-white shadow-sm overflow-hidden">
+            <div className="relative w-full aspect-[16/10] sm:aspect-[16/7] lg:aspect-[21/9]">
               {framesErrored ? (
                 <div className="absolute inset-0 grid place-items-center p-8 text-sm text-[--color-ink-500]">
                   De radar is even niet bereikbaar — we proberen het
@@ -89,13 +141,23 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               )}
             </div>
           </div>
-          <div className="order-1 lg:order-2">
-            <LocationCard
-              locationName={DEFAULT_LOCATION.name}
-              rain={rain}
-              errorMessage={rainError}
-            />
-          </div>
+        </section>
+
+        <section
+          aria-label="Weersinformatie"
+          className="mx-auto max-w-6xl px-4 sm:px-6 pb-16 grid gap-4 lg:grid-cols-2"
+        >
+          <WeatherNowCard
+            locationName={location.name}
+            rain={rain}
+            loading={rainLoading}
+          />
+          <RainForecastCard
+            locationName={location.name}
+            rain={rain}
+            loading={rainLoading}
+            errorMessage={rainErrMsg}
+          />
         </section>
       </main>
       <SiteFooter />

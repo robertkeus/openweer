@@ -1,9 +1,10 @@
 import type { Route } from "./+types/locatie";
 import { data } from "react-router";
 import { api, ApiError } from "~/lib/api";
-import { LocationCard } from "~/components/LocationCard";
+import { RainForecastCard } from "~/components/RainForecastCard";
 import { SiteFooter } from "~/components/SiteFooter";
 import { SiteHeader } from "~/components/SiteHeader";
+import { WeatherNowCard } from "~/components/WeatherNowCard";
 import { findLocationBySlug } from "~/lib/locations";
 
 export function meta({ params, data: loaderData }: Route.MetaArgs) {
@@ -47,8 +48,9 @@ export default function Locatie({ loaderData }: Route.ComponentProps) {
           <p className="mt-3 text-[--color-ink-700]">
             Coördinaten: {location.lat.toFixed(2)}°N, {location.lon.toFixed(2)}°O
           </p>
-          <div className="mt-8">
-            <LocationCard locationName={location.name} rain={rain} />
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <WeatherNowCard locationName={location.name} rain={rain} />
+            <RainForecastCard locationName={location.name} rain={rain} />
           </div>
         </section>
       </main>
