@@ -1,7 +1,9 @@
 import type { Route } from "./+types/home";
 import { api } from "~/lib/api";
+import { MapMount } from "~/components/MapMount";
 import { SiteFooter } from "~/components/SiteFooter";
 import { SiteHeader } from "~/components/SiteHeader";
+import { defaultPlayableFrames } from "~/lib/frames";
 
 export function meta() {
   return [
@@ -27,13 +29,13 @@ export async function loader() {
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   const { frames, errored } = loaderData;
-  const frameCount = frames.frames.length;
+  const playable = defaultPlayableFrames(frames.frames);
 
   return (
     <>
       <SiteHeader />
       <main className="flex-1">
-        <section className="mx-auto max-w-6xl px-4 sm:px-6 pt-10 sm:pt-16 pb-10">
+        <section className="mx-auto max-w-6xl px-4 sm:px-6 pt-10 sm:pt-12 pb-6 sm:pb-8">
           <p className="text-sm font-medium uppercase tracking-wider text-[--color-accent-600]">
             Regenradar Nederland
           </p>
@@ -59,14 +61,16 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           aria-label="Regenradar"
           className="mx-auto max-w-6xl px-4 sm:px-6 pb-16"
         >
-          <div className="rounded-2xl border border-[--color-ink-100] bg-white shadow-sm overflow-hidden dark:bg-[--color-ink-900] dark:border-[--color-ink-700]">
-            <div className="aspect-[4/3] sm:aspect-[16/9] grid place-items-center text-[--color-ink-500] text-sm bg-gradient-to-br from-sky-50 via-white to-white">
-              {/* Map mounts here client-side in Step 5b. */}
-              <p className="text-center">
-                {errored
-                  ? "De radar is even niet bereikbaar — we proberen het automatisch opnieuw."
-                  : `Kaart laadt… (${frameCount} frames beschikbaar)`}
-              </p>
+          <div className="relative rounded-2xl border border-[--color-ink-100] bg-white shadow-sm overflow-hidden dark:bg-[--color-ink-900] dark:border-[--color-ink-700]">
+            <div className="relative aspect-[4/3] sm:aspect-[16/9]">
+              {errored ? (
+                <div className="absolute inset-0 grid place-items-center p-8 text-sm text-[--color-ink-500]">
+                  De radar is even niet bereikbaar — we proberen het
+                  automatisch opnieuw.
+                </div>
+              ) : (
+                <MapMount frames={playable} />
+              )}
             </div>
           </div>
         </section>

@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 
@@ -55,6 +56,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(frames.router)
     app.include_router(rain.router)
+
+    # ---- /tiles/* static files (dev convenience; Caddy bypasses this in prod) ----
+    tiles_dir = cfg.data_dir / "tiles"
+    tiles_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/tiles", StaticFiles(directory=tiles_dir, check_dir=False), name="tiles")
 
     return app
 
