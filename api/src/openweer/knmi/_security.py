@@ -24,6 +24,13 @@ _DOWNLOAD_HOST_SUFFIXES: tuple[str, ...] = (
     ".dataplatform.knmi.nl",
 )
 
+#: GreenPT LLM API — used by the /api/chat proxy.
+_GREENPT_API_HOSTS: frozenset[str] = frozenset(
+    {
+        "api.greenpt.ai",
+    }
+)
+
 
 class UrlNotAllowedError(ValueError):
     """Raised when an outbound URL fails the allowlist check."""
@@ -59,3 +66,13 @@ def assert_download_url(url: str) -> str:
     raise UrlNotAllowedError(
         f"Refusing download URL: host {host!r} is not in the download allowlist"
     )
+
+
+def assert_greenpt_url(url: str) -> str:
+    """Validate `url` targets the GreenPT LLM API. Returns the URL on success."""
+    host, _ = _parsed_https(url)
+    if host not in _GREENPT_API_HOSTS:
+        raise UrlNotAllowedError(
+            f"Refusing URL: host {host!r} is not in the GreenPT API allowlist"
+        )
+    return url

@@ -40,6 +40,16 @@ class Settings(BaseSettings):
         validation_alias="KNMI_WMS_API_KEY",
     )
 
+    # GreenPT (LLM provider) — used by the /api/chat proxy.
+    greenpt_api_key: SecretStr = Field(
+        default=SecretStr(""),
+        validation_alias="OPENWEER_GREENPT_API_KEY",
+    )
+    greenpt_model: str = Field(
+        default="gemma4",
+        validation_alias="OPENWEER_GREENPT_MODEL",
+    )
+
     data_dir: Path = Field(
         default=Path("./data"),
         validation_alias="OPENWEER_DATA_DIR",
@@ -63,6 +73,9 @@ class Settings(BaseSettings):
 
     def require_wms_key(self) -> str:
         return _require(self.knmi_wms_api_key, "KNMI_WMS_API_KEY")
+
+    def require_greenpt_key(self) -> str:
+        return _require(self.greenpt_api_key, "OPENWEER_GREENPT_API_KEY")
 
 
 def _require(secret: SecretStr, env_name: str) -> str:

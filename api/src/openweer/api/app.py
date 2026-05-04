@@ -12,7 +12,7 @@ from starlette.middleware.gzip import GZipMiddleware
 
 from openweer import __version__
 from openweer.api.dependencies import AppState
-from openweer.api.routes import frames, health, rain
+from openweer.api.routes import chat, frames, health, rain
 from openweer.api.security import SecurityHeadersMiddleware
 from openweer.settings import Settings, get_settings
 
@@ -47,8 +47,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=_cors_origins(cfg),
         allow_credentials=False,
-        allow_methods=["GET"],
-        allow_headers=["accept", "accept-language"],
+        allow_methods=["GET", "POST"],
+        allow_headers=["accept", "accept-language", "content-type"],
         max_age=600,
     )
 
@@ -56,6 +56,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(frames.router)
     app.include_router(rain.router)
+    app.include_router(chat.router)
 
     # ---- /tiles/* static files (dev convenience; Caddy bypasses this in prod) ----
     tiles_dir = cfg.data_dir / "tiles"

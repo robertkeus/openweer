@@ -17,6 +17,8 @@ def _isolate_settings(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         "KNMI_NOTIFICATION_API_KEY",
         "KNMI_EDR_API_KEY",
         "KNMI_WMS_API_KEY",
+        "OPENWEER_GREENPT_API_KEY",
+        "OPENWEER_GREENPT_MODEL",
     ):
         monkeypatch.delenv(var, raising=False)
     reset_settings_cache()
