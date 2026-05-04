@@ -321,6 +321,60 @@ body {
   }
 }
 
+/* Tabbed-panel pills (AI Chat / Details). Inactive reads as a quiet
+   ghost button; active fills with the accent tint, lifts slightly, and
+   gets a colored bottom underline that bleeds onto the panel border. */
+.tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 0.85rem 0.85rem 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink-700);
+  background: transparent;
+  position: relative;
+  transition:
+    color 140ms ease,
+    background-color 140ms ease;
+}
+.tab-pill:hover {
+  color: var(--color-ink-900);
+  background: color-mix(in oklab, var(--color-ink-50) 70%, transparent);
+}
+.tab-pill__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-ink-500);
+  transition: color 140ms ease;
+}
+.tab-pill:hover .tab-pill__icon {
+  color: var(--color-ink-700);
+}
+.tab-pill--active {
+  color: var(--color-accent-600);
+  background: color-mix(in oklab, var(--color-accent-500) 12%, transparent);
+}
+.tab-pill--active .tab-pill__icon {
+  color: var(--color-accent-600);
+}
+.tab-pill--active::after {
+  content: "";
+  position: absolute;
+  left: 0.4rem;
+  right: 0.4rem;
+  bottom: -1px;
+  height: 2.5px;
+  border-radius: 9999px 9999px 0 0;
+  background: var(--color-accent-600);
+}
+.tab-pill:focus-visible {
+  outline: 2px solid var(--color-accent-500);
+  outline-offset: -2px;
+}
+
 /* AI chat surface — bubbles + shortcut chips. */
 .chat-bubble {
   max-width: 85%;

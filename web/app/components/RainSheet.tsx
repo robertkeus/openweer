@@ -165,17 +165,19 @@ function TabBar({
     <div
       role="tablist"
       aria-label="Paneel-tabs"
-      className="flex items-stretch border-b border-[--color-border] px-2 pt-1"
+      className="flex items-stretch gap-1 border-b border-[--color-border] px-2 pt-1.5"
     >
       <Tab
         label="AI Chat"
         active={active === "chat"}
         onClick={() => onChange("chat")}
+        icon={<ChatTabIcon className="h-4 w-4" />}
       />
       <Tab
         label="Details"
         active={active === "details"}
         onClick={() => onChange("details")}
+        icon={<DetailsTabIcon className="h-4 w-4" />}
       />
     </div>
   );
@@ -185,10 +187,12 @@ function Tab({
   label,
   active,
   onClick,
+  icon,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
+  icon: React.ReactNode;
 }) {
   return (
     <button
@@ -196,18 +200,71 @@ function Tab({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`relative px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[--color-accent-500] ${
-        active ? "text-[--color-ink-900]" : "text-[--color-ink-700] hover:text-[--color-ink-900]"
-      }`}
+      className={`tab-pill ${active ? "tab-pill--active" : ""}`}
     >
-      {label}
-      {active ? (
-        <span
-          aria-hidden="true"
-          className="absolute left-2 right-2 -bottom-px h-[2px] rounded-full bg-[--color-accent-600]"
-        />
-      ) : null}
+      <span aria-hidden="true" className="tab-pill__icon">
+        {icon}
+      </span>
+      <span>{label}</span>
     </button>
+  );
+}
+
+function ChatTabIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path
+        d="M5 5h14a2 2 0 012 2v8a2 2 0 01-2 2h-8l-4 4v-4H5a2 2 0 01-2-2V7a2 2 0 012-2z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        fill="currentColor"
+        fillOpacity="0.14"
+      />
+      <circle cx="9" cy="11" r="0.9" fill="currentColor" />
+      <circle cx="13" cy="11" r="0.9" fill="currentColor" />
+      <circle cx="17" cy="11" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
+
+function DetailsTabIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <rect
+        x="3.5"
+        y="13"
+        width="3"
+        height="7"
+        rx="0.6"
+        fill="currentColor"
+        fillOpacity="0.18"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+      <rect
+        x="10.5"
+        y="9"
+        width="3"
+        height="11"
+        rx="0.6"
+        fill="currentColor"
+        fillOpacity="0.18"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+      <rect
+        x="17.5"
+        y="5"
+        width="3"
+        height="15"
+        rx="0.6"
+        fill="currentColor"
+        fillOpacity="0.18"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+    </svg>
   );
 }
 
