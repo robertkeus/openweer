@@ -95,27 +95,52 @@ export function RadarMap({
         "bottom-right",
       );
 
-      // Use double-click to pick a location instead of zooming in.
+      // Use double-click to pick a location instead of zooming in. We bind
+      // a DOM listener on the canvas (instead of `map.on('dblclick', ...)`)
+      // so the gesture also works on browsers/trackpads where MapLibre's
+      // internal dblclick recognizer can be flaky.
       m.doubleClickZoom.disable();
-      m.on("dblclick", (e: { lngLat: { lng: number; lat: number } }) => {
-        const { lng, lat } = e.lngLat;
+      const handlePick = (lng: number, lat: number) => {
         if (!isInNetherlands({ lat, lon: lng })) return;
         const round = (v: number) => Math.round(v * 10000) / 10000;
         const rlat = round(lat);
         const rlon = round(lng);
-        // Optimistically apply the pin with a coordinate-style label, then
-        // upgrade to the reverse-geocoded city name when Nominatim responds.
         const fallback = `${rlat.toFixed(2)}°N, ${rlon.toFixed(2)}°O`;
-        onLocationPickRef.current?.({
-          name: fallback,
-          lat: rlat,
-          lon: rlon,
-        });
+        onLocationPickRef.current?.({ name: fallback, lat: rlat, lon: rlon });
         void reverseGeocode(rlat, rlon).then((name) => {
           if (!name) return;
           onLocationPickRef.current?.({ name, lat: rlat, lon: rlon });
         });
-      });
+      };
+      const canvas = m.getCanvasContainer();
+      const onDblClick = (ev: MouseEvent) => {
+        ev.preventDefault();
+        const { lng, lat } = m.unproject([ev.offsetX, ev.offsetY]);
+        handlePick(lng, lat);
+      };
+      canvas.addEventListener("dblclick", onDblClick);
+      // Touch fallback: detect two pointerdowns within 350ms at the same
+      // spot. dblclick is unreliable on touch screens.
+      let lastTap = { ts: 0, x: 0, y: 0 };
+      const onPointerDown = (ev: PointerEvent) => {
+        if (ev.pointerType !== "touch") return;
+        const now = ev.timeStamp;
+        const dx = Math.abs(ev.clientX - lastTap.x);
+        const dy = Math.abs(ev.clientY - lastTap.y);
+        if (now - lastTap.ts < 350 && dx < 24 && dy < 24) {
+          ev.preventDefault();
+          const rect = canvas.getBoundingClientRect();
+          const { lng, lat } = m.unproject([
+            ev.clientX - rect.left,
+            ev.clientY - rect.top,
+          ]);
+          handlePick(lng, lat);
+          lastTap = { ts: 0, x: 0, y: 0 };
+          return;
+        }
+        lastTap = { ts: now, x: ev.clientX, y: ev.clientY };
+      };
+      canvas.addEventListener("pointerdown", onPointerDown);
 
       m.once("load", () => {
         if (!cancelled) setMapReady(true);
