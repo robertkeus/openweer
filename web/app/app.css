@@ -395,6 +395,38 @@ body {
   border: 1px solid var(--color-border);
   border-bottom-left-radius: 0.35rem;
 }
+/* Markdown subset rendered inside assistant bubbles. */
+.chat-bubble-assistant p + p,
+.chat-bubble-assistant p + ul,
+.chat-bubble-assistant p + ol,
+.chat-bubble-assistant ul + p,
+.chat-bubble-assistant ol + p {
+  margin-top: 0.55rem;
+}
+.chat-bubble-assistant strong {
+  font-weight: 600;
+}
+.chat-bubble-assistant em {
+  font-style: italic;
+}
+.chat-bubble-assistant code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--color-ink-50) 80%, transparent);
+}
+.chat-md-list {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.chat-md-list li + li {
+  margin-top: 0.2rem;
+}
+ol.chat-md-list {
+  list-style: decimal;
+}
+
 .chat-bubble--streaming::after {
   content: "▍";
   display: inline-block;

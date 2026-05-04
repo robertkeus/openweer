@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SHORTCUT_CHIPS, type ChatContext } from "~/lib/ai-chat";
 import { useAiChat } from "~/lib/use-ai-chat";
+import { ChatMarkdown } from "./ChatMarkdown";
 
 interface Props {
   context: ChatContext;
@@ -158,7 +159,7 @@ function Bubble({
             : `chat-bubble chat-bubble-assistant ${streaming ? "chat-bubble--streaming" : ""}`
         }
       >
-        {content}
+        {isUser ? content : <ChatMarkdown text={content} />}
       </div>
     </div>
   );
