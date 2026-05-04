@@ -355,7 +355,6 @@ body {
 }
 .tab-pill--active {
   color: var(--color-accent-600);
-  background: color-mix(in oklab, var(--color-accent-500) 12%, transparent);
 }
 .tab-pill--active .tab-pill__icon {
   color: var(--color-accent-600);
