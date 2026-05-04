@@ -3,16 +3,30 @@
  * placeholder for the multi-day outlook (HARMONIE pipeline lands later).
  */
 
-import type { ConditionKind, CurrentWeather, WeatherResponse } from "~/lib/api";
+import type {
+  ConditionKind,
+  CurrentWeather,
+  DailyForecast,
+  ForecastResponse,
+  WeatherResponse,
+} from "~/lib/api";
 import { formatHm } from "~/lib/format";
 
 interface Props {
   weather: WeatherResponse | null;
+  forecast: ForecastResponse | null;
   loading?: boolean;
   errorMessage?: string;
+  forecastErrorMessage?: string;
 }
 
-export function WeatherTab({ weather, loading, errorMessage }: Props) {
+export function WeatherTab({
+  weather,
+  forecast,
+  loading,
+  errorMessage,
+  forecastErrorMessage,
+}: Props) {
   if (errorMessage) {
     return <p className="p-4 text-sm text-[--color-ink-700]">{errorMessage}</p>;
   }
@@ -24,13 +38,14 @@ export function WeatherTab({ weather, loading, errorMessage }: Props) {
     <div className="p-4 space-y-5">
       <NowCard current={current} stationName={station.name} />
       <StatGrid current={current} />
-      <ComingDays />
+      <ComingDays forecast={forecast} errorMessage={forecastErrorMessage} />
       <p className="text-[11px] text-[--color-ink-700]">
         Waarneming {formatHm(current.observed_at)} · KNMI station{" "}
         <span className="font-medium">{station.name}</span>
         {station.distance_km > 0
           ? ` — ${station.distance_km.toFixed(0)} km`
           : ""}
+        {forecast ? " · meerdaags via Open-Meteo" : ""}
       </p>
     </div>
   );
@@ -116,8 +131,13 @@ function StatGrid({ current }: { current: CurrentWeather }) {
   );
 }
 
-function ComingDays() {
-  // Multi-day forecast pulls from HARMONIE; the pipeline lands in a follow-up.
+function ComingDays({
+  forecast,
+  errorMessage,
+}: {
+  forecast: ForecastResponse | null;
+  errorMessage?: string;
+}) {
   return (
     <section aria-labelledby="coming-days">
       <h3
@@ -126,11 +146,90 @@ function ComingDays() {
       >
         Komende dagen
       </h3>
-      <p className="mt-1 text-sm text-[--color-ink-700]">
-        De meerdaagse verwachting (HARMONIE-model) volgt binnenkort.
-      </p>
+      {errorMessage ? (
+        <p className="mt-1 text-sm text-[--color-ink-700]">{errorMessage}</p>
+      ) : !forecast || forecast.days.length === 0 ? (
+        <p className="mt-1 text-sm text-[--color-ink-700]">
+          Verwachting laden…
+        </p>
+      ) : (
+        <ul className="mt-2 divide-y divide-[--color-border] rounded-2xl border border-[--color-border] overflow-hidden">
+          {forecast.days.map((day, i) => (
+            <DayRow key={day.date} day={day} index={i} />
+          ))}
+        </ul>
+      )}
     </section>
   );
+}
+
+function DayRow({ day, index }: { day: DailyForecast; index: number }) {
+  const kind = wmoToCondition(day.weather_code);
+  return (
+    <li className="flex items-center gap-3 px-3 py-2.5 text-sm">
+      <span className="w-16 flex-none text-[--color-ink-900] font-medium">
+        {dayLabel(day.date, index)}
+      </span>
+      <ConditionGlyph kind={kind} className="h-7 w-7 flex-none" />
+      <span className="flex-1 text-[--color-ink-700] truncate">
+        {conditionLabelNl(kind)}
+      </span>
+      {day.precipitation_probability_pct !== null &&
+      day.precipitation_probability_pct >= 10 ? (
+        <span className="flex-none text-xs text-[--color-accent-600] tabular-nums">
+          {day.precipitation_probability_pct}%
+        </span>
+      ) : null}
+      <span className="flex-none w-20 text-right tabular-nums">
+        <span className="font-semibold text-[--color-ink-900]">
+          {fmtTemp(day.temperature_max_c)}
+        </span>
+        <span className="ml-1 text-[--color-ink-700]">
+          {fmtTemp(day.temperature_min_c)}
+        </span>
+      </span>
+    </li>
+  );
+}
+
+const _DUTCH_WEEKDAYS = ["zo", "ma", "di", "wo", "do", "vr", "za"] as const;
+
+function dayLabel(iso: string, index: number): string {
+  if (index === 0) return "Vandaag";
+  if (index === 1) return "Morgen";
+  // ISO date; constructing local Date avoids timezone drift since YYYY-MM-DD
+  // is parsed as UTC midnight, but for weekday display that's fine in NL.
+  const d = new Date(iso);
+  const wd = _DUTCH_WEEKDAYS[d.getUTCDay()] ?? "";
+  return `${wd} ${d.getUTCDate()}`;
+}
+
+function wmoToCondition(code: number | null | undefined): ConditionKind {
+  if (code === null || code === undefined) return "unknown";
+  if (code === 0) return "clear";
+  if (code <= 3) return "partly-cloudy";
+  if (code === 45 || code === 48) return "fog";
+  if (code >= 51 && code <= 57) return "drizzle";
+  if (code >= 61 && code <= 67) return "rain";
+  if (code >= 71 && code <= 77) return "snow";
+  if (code >= 80 && code <= 82) return "rain";
+  if (code === 85 || code === 86) return "snow";
+  if (code >= 95) return "thunder";
+  return "cloudy";
+}
+
+function conditionLabelNl(kind: ConditionKind): string {
+  return {
+    clear: "Helder",
+    "partly-cloudy": "Half bewolkt",
+    cloudy: "Bewolkt",
+    fog: "Mist",
+    drizzle: "Motregen",
+    rain: "Regen",
+    thunder: "Onweer",
+    snow: "Sneeuw",
+    unknown: "—",
+  }[kind];
 }
 
 function fmtTemp(c: number | null): string {

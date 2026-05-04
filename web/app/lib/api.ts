@@ -146,6 +146,29 @@ export type WeatherStation = z.infer<typeof WeatherStationSchema>;
 export type CurrentWeather = z.infer<typeof CurrentWeatherSchema>;
 export type WeatherResponse = z.infer<typeof WeatherResponseSchema>;
 
+const DailyForecastSchema = z.object({
+  date: z.string(),
+  weather_code: z.number().int().nullable(),
+  temperature_max_c: z.number().nullable(),
+  temperature_min_c: z.number().nullable(),
+  precipitation_sum_mm: z.number().nullable(),
+  precipitation_probability_pct: z.number().int().nullable(),
+  wind_max_kph: z.number().nullable(),
+  wind_direction_deg: z.number().int().nullable(),
+  sunrise: z.string().nullable(),
+  sunset: z.string().nullable(),
+});
+
+export const ForecastResponseSchema = z.object({
+  lat: z.number(),
+  lon: z.number(),
+  source: z.string(),
+  days: z.array(DailyForecastSchema),
+});
+
+export type DailyForecast = z.infer<typeof DailyForecastSchema>;
+export type ForecastResponse = z.infer<typeof ForecastResponseSchema>;
+
 // ---- public API ----
 
 export const api = {
@@ -160,5 +183,10 @@ export const api = {
     fetchJson(
       `/api/weather/${lat.toFixed(4)}/${lon.toFixed(4)}`,
       WeatherResponseSchema,
+    ),
+  forecast: (lat: number, lon: number) =>
+    fetchJson(
+      `/api/forecast/${lat.toFixed(4)}/${lon.toFixed(4)}`,
+      ForecastResponseSchema,
     ),
 };

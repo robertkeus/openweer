@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { Route } from "./+types/home";
-import { ApiError, api, type RainResponse, type WeatherResponse } from "~/lib/api";
+import {
+  ApiError,
+  api,
+  type ForecastResponse,
+  type RainResponse,
+  type WeatherResponse,
+} from "~/lib/api";
 import { AiChatPanel } from "~/components/AiChatPanel";
 import { CurrentTimeChip } from "~/components/CurrentTimeChip";
 import { LocationBar, type SelectedLocation } from "~/components/LocationBar";
@@ -34,10 +40,11 @@ export function meta() {
 }
 
 export async function loader() {
-  const [frames, rain, weather] = await Promise.allSettled([
+  const [frames, rain, weather, forecast] = await Promise.allSettled([
     api.frames(),
     api.rain(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon),
     api.weather(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon),
+    api.forecast(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon),
   ]);
 
   return {
@@ -57,6 +64,11 @@ export async function loader() {
     weatherError:
       weather.status === "rejected"
         ? "Het weerbeeld is even niet bereikbaar."
+        : undefined,
+    forecast: forecast.status === "fulfilled" ? forecast.value : null,
+    forecastError:
+      forecast.status === "rejected"
+        ? "De meerdaagse verwachting is even niet bereikbaar."
         : undefined,
   };
 }
@@ -79,6 +91,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherErrMsg, setWeatherErrMsg] = useState<string | undefined>(
     weatherError,
+  );
+  const [forecast, setForecast] = useState<ForecastResponse | null>(
+    loaderData.forecast,
+  );
+  const [forecastErrMsg, setForecastErrMsg] = useState<string | undefined>(
+    loaderData.forecastError,
   );
   const [consentDismissed, setConsentDismissed] = useState(false);
 
@@ -145,6 +163,21 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     [],
   );
 
+  const refetchForecast = useCallback(
+    async (lat: number, lon: number, signal: AbortSignal) => {
+      setForecastErrMsg(undefined);
+      try {
+        const data = await api.forecast(lat, lon);
+        if (!signal.aborted) setForecast(data);
+      } catch (err) {
+        if (signal.aborted) return;
+        setForecastErrMsg("De meerdaagse verwachting is even niet bereikbaar.");
+        setForecast(null);
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (
       location.lat === DEFAULT_LOCATION.lat &&
@@ -155,8 +188,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     const ctrl = new AbortController();
     refetchRain(location.lat, location.lon, ctrl.signal);
     refetchWeather(location.lat, location.lon, ctrl.signal);
+    refetchForecast(location.lat, location.lon, ctrl.signal);
     return () => ctrl.abort();
-  }, [location.lat, location.lon, refetchRain, refetchWeather]);
+  }, [location.lat, location.lon, refetchRain, refetchWeather, refetchForecast]);
 
   return (
     <div className="map-shell fixed inset-0 overflow-hidden">
@@ -234,8 +268,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         weather={
           <WeatherTab
             weather={weather}
+            forecast={forecast}
             loading={weatherLoading}
             errorMessage={weatherErrMsg}
+            forecastErrorMessage={forecastErrMsg}
           />
         }
         details={

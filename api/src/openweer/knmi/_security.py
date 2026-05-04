@@ -31,6 +31,13 @@ _GREENPT_API_HOSTS: frozenset[str] = frozenset(
     }
 )
 
+#: Open-Meteo — free medium-range forecast API used by /api/forecast.
+_OPEN_METEO_HOSTS: frozenset[str] = frozenset(
+    {
+        "api.open-meteo.com",
+    }
+)
+
 
 class UrlNotAllowedError(ValueError):
     """Raised when an outbound URL fails the allowlist check."""
@@ -74,5 +81,15 @@ def assert_greenpt_url(url: str) -> str:
     if host not in _GREENPT_API_HOSTS:
         raise UrlNotAllowedError(
             f"Refusing URL: host {host!r} is not in the GreenPT API allowlist"
+        )
+    return url
+
+
+def assert_open_meteo_url(url: str) -> str:
+    """Validate `url` targets the Open-Meteo API. Returns the URL on success."""
+    host, _ = _parsed_https(url)
+    if host not in _OPEN_METEO_HOSTS:
+        raise UrlNotAllowedError(
+            f"Refusing URL: host {host!r} is not in the Open-Meteo allowlist"
         )
     return url
