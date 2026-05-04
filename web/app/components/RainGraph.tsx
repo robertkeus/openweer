@@ -209,26 +209,64 @@ export function RainSummary({ samples, action }: SummaryProps) {
 }
 
 function SunCloudIcon(props: React.SVGProps<SVGSVGElement>) {
+  // Soft cumulus + warm sun. Uses gradients so it reads as a real cloud
+  // rather than a stylized pictogram, but still scales cleanly to any size.
+  const gradId = `cloud-fill-${Math.random().toString(36).slice(2, 8)}`;
+  const sunId = `sun-fill-${Math.random().toString(36).slice(2, 8)}`;
+  const haloId = `sun-halo-${Math.random().toString(36).slice(2, 8)}`;
   return (
-    <svg viewBox="0 0 48 48" fill="none" {...props}>
-      <circle cx="32" cy="14" r="6" fill="var(--color-sun-400)" />
+    <svg viewBox="0 0 64 56" fill="none" {...props}>
+      <defs>
+        <radialGradient id={haloId} cx="44" cy="18" r="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="var(--color-sun-400)" stopOpacity="0.45" />
+          <stop offset="1" stopColor="var(--color-sun-400)" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id={sunId} cx="42" cy="16" r="9" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="oklch(0.95 0.14 85)" />
+          <stop offset="1" stopColor="var(--color-sun-400)" />
+        </radialGradient>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="oklch(1 0 0)" stopOpacity="0.95" />
+          <stop offset="1" stopColor="oklch(0.86 0.012 250)" stopOpacity="0.95" />
+        </linearGradient>
+      </defs>
+
+      {/* Soft warm halo behind the sun. */}
+      <circle cx="44" cy="18" r="22" fill={`url(#${haloId})`} />
+
+      {/* Sun disc with a gentle highlight gradient. */}
+      <circle cx="42" cy="16" r="8" fill={`url(#${sunId})`} />
       <g
         stroke="var(--color-sun-400)"
-        strokeWidth="2"
-        strokeLinecap="round"
-      >
-        <line x1="32" y1="2" x2="32" y2="5" />
-        <line x1="44" y1="14" x2="47" y2="14" />
-        <line x1="40.5" y1="5.5" x2="42.6" y2="3.4" />
-      </g>
-      <path
-        d="M10 32a6 6 0 010-12 8 8 0 0115-3 5 5 0 014 9.5 4 4 0 01-3 5.5z"
-        fill="currentColor"
-        fillOpacity="0.18"
-        stroke="currentColor"
         strokeWidth="1.8"
-        strokeLinejoin="round"
+        strokeLinecap="round"
+        opacity="0.85"
+      >
+        <line x1="42" y1="2" x2="42" y2="5.5" />
+        <line x1="56.5" y1="16" x2="60" y2="16" />
+        <line x1="52.5" y1="6" x2="55" y2="3.5" />
+        <line x1="52.5" y1="26" x2="55" y2="28.5" />
+      </g>
+
+      {/* Soft drop shadow under the cloud. */}
+      <ellipse
+        cx="28"
+        cy="46"
+        rx="20"
+        ry="2.4"
+        fill="oklch(0.16 0.02 250)"
+        opacity="0.18"
       />
+
+      {/* Cumulus body — overlapping lobes give a fluffy, real-cloud silhouette. */}
+      <g fill={`url(#${gradId})`} stroke="oklch(0.78 0.012 250)" strokeWidth="0.8" strokeLinejoin="round">
+        <path d="M12 42c-4.4 0-8-3.4-8-7.6 0-3.7 2.7-6.8 6.4-7.5a9 9 0 0117 0.5 6.5 6.5 0 014 11.6 5.5 5.5 0 01-4.4 2.9 6 6 0 01-4.7 0z" />
+      </g>
+      {/* Highlight lobes that catch the light from the sun's direction. */}
+      <g fill="oklch(1 0 0)" opacity="0.55">
+        <ellipse cx="14" cy="31" rx="4" ry="2.2" />
+        <ellipse cx="22" cy="27.5" rx="5" ry="2.4" />
+      </g>
     </svg>
   );
 }
