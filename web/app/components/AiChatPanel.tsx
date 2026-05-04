@@ -4,18 +4,15 @@
  * useAiChat hook.
  */
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SHORTCUT_CHIPS, type ChatContext } from "~/lib/ai-chat";
 import { useAiChat } from "~/lib/use-ai-chat";
 
 interface Props {
-  open: boolean;
   context: ChatContext;
-  onClose: () => void;
 }
 
-export function AiChatPanel({ open, context, onClose }: Props) {
-  const titleId = useId();
+export function AiChatPanel({ context }: Props) {
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
@@ -28,57 +25,12 @@ export function AiChatPanel({ open, context, onClose }: Props) {
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, pending]);
 
-  // ESC closes the panel.
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   function submit(prompt: string) {
     void send(prompt, context);
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="false"
-      aria-labelledby={titleId}
-      className="flex flex-col h-full"
-    >
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-[--color-border]">
-        <div>
-          <h2 id={titleId} className="text-base font-semibold tracking-tight">
-            OpenWeer-assistent
-          </h2>
-          <p className="text-xs text-[--color-ink-700]">
-            Antwoorden via{" "}
-            <a
-              href="https://greenpt.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-[--color-accent-600]"
-            >
-              GreenPT
-            </a>
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Sluit AI-chat"
-          className="grid place-items-center h-8 w-8 rounded-full hover:bg-[--color-ink-50] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--color-accent-500]"
-        >
-          <CloseIcon className="h-4 w-4" />
-        </button>
-      </header>
-
+    <div className="flex flex-col h-full">
       {/* Messages */}
       <div
         ref={scrollRef}
@@ -209,19 +161,6 @@ function Bubble({
         {content}
       </div>
     </div>
-  );
-}
-
-function CloseIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" {...props}>
-      <path
-        d="M6 6l12 12M18 6L6 18"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }
 

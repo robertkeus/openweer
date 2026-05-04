@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import type { Route } from "./+types/home";
 import { ApiError, api, type RainResponse } from "~/lib/api";
 import { AiChatPanel } from "~/components/AiChatPanel";
-import { AiChatTrigger } from "~/components/AiChatTrigger";
 import { CurrentTimeChip } from "~/components/CurrentTimeChip";
 import { LocationBar, type SelectedLocation } from "~/components/LocationBar";
 import { LocationConsent } from "~/components/LocationConsent";
@@ -63,7 +62,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const [rainLoading, setRainLoading] = useState(false);
   const [rainErrMsg, setRainErrMsg] = useState<string | undefined>(rainError);
   const [consentDismissed, setConsentDismissed] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
 
   const timeline = useRadarTimeline(frames.frames);
   const { resolved: resolvedTheme } = useTheme();
@@ -187,18 +185,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         </div>
       </div>
 
-      {/* Bottom: rain sheet (sits above the timeline). */}
+      {/* Bottom-right tabbed panel (sits above the timeline). */}
       <RainSheet
-        chatOpen={chatOpen}
-        chatPanel={
-          <AiChatPanel
-            open={chatOpen}
-            context={chatContext}
-            onClose={() => setChatOpen(false)}
-          />
-        }
-        peek={
-          <div className="pt-2 space-y-3">
+        defaultTab="chat"
+        chat={<AiChatPanel context={chatContext} />}
+        details={
+          <>
             {rainErrMsg ? (
               <p className="text-sm text-[--color-ink-500]">{rainErrMsg}</p>
             ) : rainLoading ? (
@@ -207,31 +199,22 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               </p>
             ) : rain && rain.samples.length ? (
               <>
-                <RainSummary
-                  samples={rain.samples}
-                  action={<AiChatTrigger onClick={() => setChatOpen(true)} />}
-                />
+                <RainSummary samples={rain.samples} />
                 <RainLegend />
+                <div className="text-[--color-accent-600]">
+                  <RainGraph samples={rain.samples} height={140} />
+                </div>
+                <WeatherNowCard
+                  locationName={location.name}
+                  rain={rain}
+                  loading={rainLoading}
+                />
               </>
             ) : (
               <p className="text-sm text-[--color-ink-500]">
                 Geen voorspelling beschikbaar.
               </p>
             )}
-          </div>
-        }
-        expanded={
-          <>
-            {rain && rain.samples.length ? (
-              <div className="text-[--color-accent-600]">
-                <RainGraph samples={rain.samples} height={140} />
-              </div>
-            ) : null}
-            <WeatherNowCard
-              locationName={location.name}
-              rain={rain}
-              loading={rainLoading}
-            />
           </>
         }
       />
