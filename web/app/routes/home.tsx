@@ -12,7 +12,7 @@ import { RainLegend } from "~/components/RainLegend";
 import { RainSheet } from "~/components/RainSheet";
 import { RecenterButton } from "~/components/RecenterButton";
 import { ThemeToggle } from "~/components/ThemeToggle";
-import { TimeSlider } from "~/components/TimeSlider";
+import { Timeline } from "~/components/Timeline";
 import { WeatherNowCard } from "~/components/WeatherNowCard";
 import { DEFAULT_LOCATION } from "~/lib/locations";
 import { useGeolocation } from "~/lib/use-geolocation";
@@ -125,8 +125,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       </div>
 
       {/* Top: logo + location bar (left, capped) + current-time chip (right). */}
-      <div className="pointer-events-none absolute inset-x-0 top-3 sm:top-4 z-20 px-3 sm:px-4 flex flex-col items-stretch gap-2 sm:gap-3">
-        <div className="flex items-start gap-2 sm:gap-3">
+      <div
+        className="pointer-events-none absolute inset-x-0 z-20 px-3 sm:px-4 flex flex-col items-stretch gap-2 sm:gap-3"
+        style={{ top: "max(env(safe-area-inset-top, 0px) + 0.75rem, 0.75rem)" }}
+      >
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             to="/"
             aria-label="OpenWeer"
@@ -138,7 +141,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           <div className="pointer-events-auto flex-1 min-w-0 max-w-md sm:max-w-lg">
             <LocationBar current={location} onSelect={setLocation} />
           </div>
-          <div className="pointer-events-auto flex-none ml-auto">
+          {/* Time chip is desktop/tablet only — on mobile the slider's "Nu" pill covers this. */}
+          <div className="hidden sm:block pointer-events-auto flex-none ml-auto">
             <CurrentTimeChip
               frame={timeline.current}
               sample={rain?.samples[0]}
@@ -163,24 +167,16 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       </div>
 
       {/* Mobile-only recenter button (desktop relies on the crosshair inside the location bar). */}
-      <div className="lg:hidden pointer-events-none absolute right-3 bottom-[calc(var(--sheet-peek)+1rem)] z-20">
+      <div className="lg:hidden pointer-events-none absolute right-3 bottom-[calc(var(--sheet-peek)+var(--timeline-height)+1rem)] z-20">
         <div className="pointer-events-auto">
           <RecenterButton onLocate={setLocation} />
         </div>
       </div>
 
-      {/* Bottom: rain sheet (mobile + desktop variants live inside). */}
+      {/* Bottom: rain sheet (sits above the timeline). */}
       <RainSheet
         peek={
           <div className="pt-2 space-y-3">
-            <TimeSlider
-              frames={timeline.frames}
-              currentIndex={timeline.currentIndex}
-              nowIndex={timeline.nowIndex}
-              isPlaying={timeline.isPlaying}
-              onSeek={timeline.seek}
-              onTogglePlay={timeline.togglePlay}
-            />
             {rainErrMsg ? (
               <p className="text-sm text-[--color-ink-500]">{rainErrMsg}</p>
             ) : rainLoading ? (
@@ -190,9 +186,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             ) : rain && rain.samples.length ? (
               <>
                 <RainSummary samples={rain.samples} />
-                <div className="text-[--color-accent-600]">
-                  <RainGraph samples={rain.samples} height={110} />
-                </div>
                 <RainLegend />
               </>
             ) : (
@@ -203,13 +196,33 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           </div>
         }
         expanded={
-          <WeatherNowCard
-            locationName={location.name}
-            rain={rain}
-            loading={rainLoading}
-          />
+          <>
+            {rain && rain.samples.length ? (
+              <div className="text-[--color-accent-600]">
+                <RainGraph samples={rain.samples} height={140} />
+              </div>
+            ) : null}
+            <WeatherNowCard
+              locationName={location.name}
+              rain={rain}
+              loading={rainLoading}
+            />
+          </>
         }
       />
+
+      {/* Full-width timeline pinned to viewport bottom. */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-2 sm:px-3 pb-[max(env(safe-area-inset-bottom,0),0.5rem)]">
+        <Timeline
+          frames={timeline.frames}
+          currentIndex={timeline.currentIndex}
+          nowIndex={timeline.nowIndex}
+          isPlaying={timeline.isPlaying}
+          rainSamples={rain?.samples}
+          onSeek={timeline.seek}
+          onTogglePlay={timeline.togglePlay}
+        />
+      </div>
     </div>
   );
 }

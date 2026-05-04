@@ -136,12 +136,14 @@ export function RainSummary({ samples }: SummaryProps) {
           : "Zware buien verwacht.";
 
   return (
-    <div className="grid grid-cols-2 gap-4 text-sm">
-      <div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
+      <div className="sm:col-span-2">
         <p className="text-[--color-ink-700] uppercase text-xs tracking-wider">
           Verwachting
         </p>
-        <p className="text-base font-medium text-[--color-ink-900]">{headline}</p>
+        <p className="text-base font-medium text-[--color-ink-900]">
+          {headline}
+        </p>
       </div>
       <div>
         <p className="text-[--color-ink-700] uppercase text-xs tracking-wider">
@@ -154,9 +156,9 @@ export function RainSummary({ samples }: SummaryProps) {
           </span>
         </p>
       </div>
-      <div className="col-span-2">
+      <div>
         <p className="text-[--color-ink-700] uppercase text-xs tracking-wider">
-          Totale verwachte neerslag
+          Totaal
         </p>
         <p className="text-base font-medium tabular-nums">
           {totalMm.toFixed(1)} mm
