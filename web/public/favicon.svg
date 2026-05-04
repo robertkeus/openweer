@@ -1,5 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
-  <rect width="24" height="24" rx="6" fill="#0b1320"/>
-  <circle cx="12" cy="12" r="9" stroke="#9bc3f1" stroke-width="1.2"/>
-  <path d="M5 14.5a4 4 0 014-4 5 5 0 019.5 1.5 3.5 3.5 0 11-.5 6.9H8a3 3 0 01-3-4.4z" fill="#9bc3f1" stroke="#9bc3f1" stroke-width="0.7" stroke-linejoin="round"/>
+  <!-- Sun, upper-right corner. -->
+  <circle cx="17" cy="7" r="3" fill="#f0c83a"/>
+  <g stroke="#f0c83a" stroke-width="1.25" stroke-linecap="round">
+    <line x1="17" y1="2" x2="17" y2="3.5"/>
+    <line x1="12" y1="7" x2="13.5" y2="7"/>
+    <line x1="13.5" y1="3.5" x2="14.5" y2="4.5"/>
+    <line x1="20.5" y1="3.5" x2="19.5" y2="4.5"/>
+  </g>
+  <!-- Cloud, brand blue. -->
+  <path
+    d="M5 14a4 4 0 014-4 5 5 0 019.5 1.5A3.5 3.5 0 1118 18H8a3 3 0 01-3-4z"
+    fill="#1f56cc"/>
 </svg>
