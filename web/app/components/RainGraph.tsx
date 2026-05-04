@@ -3,7 +3,7 @@
  * bundle tight and the rendering 100% controllable.
  */
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { RainSample } from "~/lib/api";
 import { formatHm, formatMmPerHour, rainVerdict } from "~/lib/format";
 
@@ -153,9 +153,11 @@ export function RainGraph({ samples, height = 140 }: Props) {
 
 interface SummaryProps {
   samples: readonly RainSample[];
+  /** Optional slot rendered next to the "Verwachting" eyebrow (e.g. AI trigger). */
+  action?: ReactNode;
 }
 
-export function RainSummary({ samples }: SummaryProps) {
+export function RainSummary({ samples, action }: SummaryProps) {
   if (!samples.length) return null;
   const peak = samples.reduce((a, b) => (a.mm_per_h > b.mm_per_h ? a : b));
   const totalMm = samples.reduce((s, x) => s + x.mm_per_h, 0) / 12;
@@ -173,9 +175,12 @@ export function RainSummary({ samples }: SummaryProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
       <div className="sm:col-span-2">
-        <p className="text-[--color-ink-700] uppercase text-xs tracking-wider">
-          Verwachting
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[--color-ink-700] uppercase text-xs tracking-wider">
+            Verwachting
+          </p>
+          {action}
+        </div>
         <p className="text-base font-medium text-[--color-ink-900]">
           {headline}
         </p>

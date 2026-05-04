@@ -1,0 +1,249 @@
+/**
+ * AI chat surface that lives inside the rain card (desktop) or replaces
+ * the rain sheet (mobile). Streams responses from POST /api/chat via the
+ * useAiChat hook.
+ */
+
+import { useEffect, useId, useRef, useState } from "react";
+import { SHORTCUT_CHIPS, type ChatContext } from "~/lib/ai-chat";
+import { useAiChat } from "~/lib/use-ai-chat";
+
+interface Props {
+  open: boolean;
+  context: ChatContext;
+  onClose: () => void;
+}
+
+export function AiChatPanel({ open, context, onClose }: Props) {
+  const titleId = useId();
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [draft, setDraft] = useState("");
+  const { messages, pending, error, isStreaming, send, cancel } = useAiChat();
+
+  // Auto-scroll to the bottom whenever new content lands.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, pending]);
+
+  // ESC closes the panel.
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  function submit(prompt: string) {
+    void send(prompt, context);
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby={titleId}
+      className="flex flex-col h-full"
+    >
+      {/* Header */}
+      <header className="flex items-center justify-between px-4 py-3 border-b border-[--color-border]">
+        <div>
+          <h2 id={titleId} className="text-base font-semibold tracking-tight">
+            OpenWeer-assistent
+          </h2>
+          <p className="text-xs text-[--color-ink-700]">
+            Antwoorden via{" "}
+            <a
+              href="https://greenpt.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-[--color-accent-600]"
+            >
+              GreenPT
+            </a>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Sluit AI-chat"
+          className="grid place-items-center h-8 w-8 rounded-full hover:bg-[--color-ink-50] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--color-accent-500]"
+        >
+          <CloseIcon className="h-4 w-4" />
+        </button>
+      </header>
+
+      {/* Messages */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
+        aria-live="polite"
+      >
+        {messages.length === 0 && !pending ? (
+          <div className="text-sm text-[--color-ink-700]">
+            <p className="mb-3">
+              Vraag iets over het weer op{" "}
+              <span className="font-semibold text-[--color-ink-900]">
+                {context.location_name}
+              </span>
+              , of kies hieronder een snelkoppeling.
+            </p>
+            <ul className="grid gap-2">
+              {SHORTCUT_CHIPS.map((chip) => (
+                <li key={chip.label}>
+                  <button
+                    type="button"
+                    onClick={() => submit(chip.prompt)}
+                    className="chat-shortcut-chip w-full text-left"
+                  >
+                    <span aria-hidden="true" className="mr-2">
+                      {chip.emoji}
+                    </span>
+                    {chip.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {messages.map((m, i) => (
+          <Bubble key={i} role={m.role} content={m.content} />
+        ))}
+        {pending !== null ? (
+          <Bubble role="assistant" content={pending || "…"} streaming />
+        ) : null}
+        {error ? (
+          <p
+            role="alert"
+            className="rounded-xl px-3 py-2 text-sm"
+            style={{
+              background: "var(--color-danger-bg)",
+              color: "var(--color-danger-fg)",
+            }}
+          >
+            {error}
+          </p>
+        ) : null}
+      </div>
+
+      {/* Composer */}
+      <form
+        className="border-t border-[--color-border] px-3 py-2 flex items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const value = draft.trim();
+          if (!value) return;
+          setDraft("");
+          submit(value);
+          composerRef.current?.focus();
+        }}
+      >
+        <textarea
+          ref={composerRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              const value = draft.trim();
+              if (!value) return;
+              setDraft("");
+              submit(value);
+            }
+          }}
+          rows={1}
+          aria-label="Stel een vraag aan de AI"
+          placeholder="Stel een vraag…"
+          className="flex-1 max-h-32 resize-none rounded-2xl bg-[--color-ink-50] px-3 py-2 text-sm leading-snug placeholder:text-[--color-ink-700] focus:outline focus:outline-2 focus:outline-[--color-accent-500]"
+        />
+        {isStreaming ? (
+          <button
+            type="button"
+            onClick={cancel}
+            aria-label="Stop het antwoord"
+            className="btn-secondary inline-grid place-items-center h-10 w-10 rounded-full"
+          >
+            <StopIcon className="h-4 w-4" />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={!draft.trim()}
+            aria-label="Verzend bericht"
+            className="btn-primary inline-grid place-items-center h-10 w-10 rounded-full"
+          >
+            <SendIcon className="h-4 w-4" />
+          </button>
+        )}
+      </form>
+    </div>
+  );
+}
+
+function Bubble({
+  role,
+  content,
+  streaming,
+}: {
+  role: "user" | "assistant";
+  content: string;
+  streaming?: boolean;
+}) {
+  const isUser = role === "user";
+  return (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+      <div
+        className={
+          isUser
+            ? "chat-bubble chat-bubble-user"
+            : `chat-bubble chat-bubble-assistant ${streaming ? "chat-bubble--streaming" : ""}`
+        }
+      >
+        {content}
+      </div>
+    </div>
+  );
+}
+
+function CloseIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path
+        d="M6 6l12 12M18 6L6 18"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function SendIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path
+        d="M3 12l18-9-7 18-3-7-8-2z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        fill="currentColor"
+        fillOpacity="0.2"
+      />
+    </svg>
+  );
+}
+
+function StopIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
+    </svg>
+  );
+}

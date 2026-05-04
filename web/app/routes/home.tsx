@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { Route } from "./+types/home";
 import { ApiError, api, type RainResponse } from "~/lib/api";
+import { AiChatPanel } from "~/components/AiChatPanel";
+import { AiChatTrigger } from "~/components/AiChatTrigger";
 import { CurrentTimeChip } from "~/components/CurrentTimeChip";
 import { LocationBar, type SelectedLocation } from "~/components/LocationBar";
 import { LocationConsent } from "~/components/LocationConsent";
@@ -14,9 +16,11 @@ import { RecenterButton } from "~/components/RecenterButton";
 import { ThemeToggle } from "~/components/ThemeToggle";
 import { Timeline } from "~/components/Timeline";
 import { WeatherNowCard } from "~/components/WeatherNowCard";
+import { buildContext } from "~/lib/ai-chat";
 import { DEFAULT_LOCATION } from "~/lib/locations";
 import { useGeolocation } from "~/lib/use-geolocation";
 import { useRadarTimeline } from "~/lib/use-radar-timeline";
+import { useTheme } from "~/lib/theme";
 
 export function meta() {
   return [
@@ -59,8 +63,17 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const [rainLoading, setRainLoading] = useState(false);
   const [rainErrMsg, setRainErrMsg] = useState<string | undefined>(rainError);
   const [consentDismissed, setConsentDismissed] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const timeline = useRadarTimeline(frames.frames);
+  const { resolved: resolvedTheme } = useTheme();
+  const chatContext = buildContext({
+    location,
+    rain,
+    cursorFrame: timeline.current,
+    language: "nl",
+    theme: resolvedTheme,
+  });
 
   const consent = useGeolocation((loc) => {
     setLocation(loc);
@@ -176,6 +189,14 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
       {/* Bottom: rain sheet (sits above the timeline). */}
       <RainSheet
+        chatOpen={chatOpen}
+        chatPanel={
+          <AiChatPanel
+            open={chatOpen}
+            context={chatContext}
+            onClose={() => setChatOpen(false)}
+          />
+        }
         peek={
           <div className="pt-2 space-y-3">
             {rainErrMsg ? (
@@ -186,7 +207,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               </p>
             ) : rain && rain.samples.length ? (
               <>
-                <RainSummary samples={rain.samples} />
+                <RainSummary
+                  samples={rain.samples}
+                  action={<AiChatTrigger onClick={() => setChatOpen(true)} />}
+                />
                 <RainLegend />
               </>
             ) : (

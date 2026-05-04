@@ -25,9 +25,17 @@ interface Props {
   peek: ReactNode;
   /** Extra content revealed when expanded. */
   expanded: ReactNode;
+  /**
+   * Optional AI chat surface. When provided, mobile auto-promotes the sheet
+   * to "full" and replaces the peek/expanded content with this panel; desktop
+   * renders the chat as a sibling glass-card to the right of the rain card.
+   */
+  chatPanel?: ReactNode;
+  /** True while the chat panel should take over. */
+  chatOpen?: boolean;
 }
 
-export function RainSheet({ peek, expanded }: Props) {
+export function RainSheet({ peek, expanded, chatPanel, chatOpen }: Props) {
   const [snap, setSnap] = useState<Snap>("peek");
   const [dragOffset, setDragOffset] = useState<number | null>(null);
   const startYRef = useRef(0);
@@ -95,6 +103,13 @@ export function RainSheet({ peek, expanded }: Props) {
 
   const expanded_ = snap !== "peek";
 
+  // Mobile: when chat is opened, promote the sheet to "full" so there's
+  // room to read the conversation; restore "peek" once it closes.
+  useEffect(() => {
+    if (chatOpen) setSnap("full");
+    else setSnap("peek");
+  }, [chatOpen]);
+
   return (
     <>
       {/* ---- Mobile / tablet sheet (hidden on lg+) ---- */}
@@ -129,10 +144,16 @@ export function RainSheet({ peek, expanded }: Props) {
           />
         </button>
         <div className="flex-1 overflow-y-auto px-4 pb-[max(env(safe-area-inset-bottom,0),16px)]">
-          {peek}
-          {expanded_ ? (
-            <div className="mt-4 space-y-4 pb-4">{expanded}</div>
-          ) : null}
+          {chatOpen && chatPanel ? (
+            chatPanel
+          ) : (
+            <>
+              {peek}
+              {expanded_ ? (
+                <div className="mt-4 space-y-4 pb-4">{expanded}</div>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
 
@@ -146,6 +167,20 @@ export function RainSheet({ peek, expanded }: Props) {
           {expanded}
         </div>
       </div>
+
+      {/* ---- Desktop chat card sits next to the rain card, right of it ---- */}
+      {chatOpen && chatPanel ? (
+        <div
+          className="hidden lg:flex fixed z-30 glass-card flex-col w-[26rem] motion-safe:animate-[slideInLeft_220ms_cubic-bezier(0.32,0.72,0,1)]"
+          style={{
+            left: "calc(28rem + 2rem)",
+            bottom: "calc(var(--timeline-height) + 1rem)",
+            height: "calc(100vh - 7rem - var(--timeline-height))",
+          }}
+        >
+          {chatPanel}
+        </div>
+      ) : null}
     </>
   );
 }
