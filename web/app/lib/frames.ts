@@ -26,10 +26,37 @@ export function partitionFrames(frames: readonly Frame[]) {
   return { observed, nowcast, hourly };
 }
 
+/** Past observations to retain on the slider (in milliseconds). */
+const HISTORY_WINDOW_MS = 2 * 60 * 60 * 1000; // 2h
+/** Forecast horizon to retain on the slider (in milliseconds). */
+const FORECAST_WINDOW_MS = 2 * 60 * 60 * 1000; // 2h
+
 export function defaultPlayableFrames(frames: readonly Frame[]): Frame[] {
-  /** Auto-loop range: observed history + nowcast (excludes hourly tail). */
+  /**
+   * Auto-loop range: a rolling window of past observed history and forward
+   * nowcast (excludes hourly tail). Sorted globally by timestamp so the
+   * slider reads left-to-right as past → future regardless of how many
+   * overlapping ingest cycles produced the manifest.
+   *
+   * The window is anchored on the latest observed frame: HISTORY_WINDOW_MS
+   * before, FORECAST_WINDOW_MS after. This keeps the tick density readable
+   * (~4h span) even when the manifest holds many days of data.
+   */
   const { observed, nowcast } = partitionFrames(frames);
-  return [...observed, ...nowcast];
+  if (!observed.length && !nowcast.length) return [];
+  const all = [...observed, ...nowcast].sort(byTs);
+
+  const lastObserved = observed.length ? observed[observed.length - 1] : null;
+  const anchorMs = lastObserved
+    ? new Date(lastObserved.ts).getTime()
+    : new Date(all[all.length - 1].ts).getTime();
+  const minTs = anchorMs - HISTORY_WINDOW_MS;
+  const maxTs = anchorMs + FORECAST_WINDOW_MS;
+
+  return all.filter((f) => {
+    const t = new Date(f.ts).getTime();
+    return t >= minTs && t <= maxTs;
+  });
 }
 
 export function findCurrentIndex(playable: readonly Frame[]): number {
@@ -50,10 +77,26 @@ export function findCurrentIndex(playable: readonly Frame[]): number {
 
 export function findNowAnchor(playable: readonly Frame[]): number {
   /**
-   * "Now" anchor — the frame whose timestamp is closest to the user's
-   * wall-clock time. Matches the user's expectation that the slider
-   * starts at the current moment.
+   * "Nu" anchor — the boundary between past and future inside the playable
+   * range. We pick the index of the latest `observed` frame: everything
+   * before it is real radar history, everything after it is forecast
+   * (nowcast). With wall-clock-closest you'd land at the rightmost frame
+   * whenever data is stale, hiding the forecast scrub direction.
+   *
+   * Falls back to wall-clock-closest only when no observed frame exists.
    */
+  if (!playable.length) return 0;
+  let lastObserved = -1;
+  let lastObservedTs = -Infinity;
+  playable.forEach((f, i) => {
+    if (f.kind !== "observed") return;
+    const ts = new Date(f.ts).getTime();
+    if (ts >= lastObservedTs) {
+      lastObservedTs = ts;
+      lastObserved = i;
+    }
+  });
+  if (lastObserved >= 0) return lastObserved;
   return findCurrentIndex(playable);
 }
 
