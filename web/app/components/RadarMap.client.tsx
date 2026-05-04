@@ -89,7 +89,7 @@ export function RadarMap({
       m.addControl(
         new maplibre.AttributionControl({
           customAttribution:
-            'Radar © <a href="https://www.knmi.nl">KNMI</a> · Kaart © <a href="https://openfreemap.org">OpenFreeMap</a> / <a href="https://carto.com/attributions">CARTO</a>',
+            'Radar © <a href="https://www.knmi.nl">KNMI</a> · Kaart © <a href="https://openfreemap.org">OpenFreeMap</a> / <a href="https://carto.com/attributions">CARTO</a> · <a href="https://github.com/robertkeus/openweer" target="_blank" rel="noopener">OpenWeer op GitHub</a>',
           compact: true,
         }),
         "bottom-right",

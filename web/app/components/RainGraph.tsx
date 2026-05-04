@@ -13,7 +13,6 @@ interface Props {
 }
 
 const BAR_GAP = 2;
-const Y_LABELS_MM = [0.5, 2.0, 5.0, 10.0];
 
 function maxBound(samples: readonly RainSample[]): number {
   const observed = Math.max(...samples.map((s) => s.mm_per_h), 0);
@@ -82,34 +81,6 @@ export function RainGraph({ samples, height = 140 }: Props) {
           Verwachte neerslag in millimeter per uur, in stappen van 5 minuten.
           Totaal naar verwachting {totalMm} mm.
         </desc>
-
-        {/* Y-axis grid + labels. */}
-        {Y_LABELS_MM.filter((v) => v < yMax * 1.1).map((value) => {
-          const y = height - (value / yMax) * (height - 18) - 4;
-          return (
-            <g key={value}>
-              <line
-                x1={0}
-                x2={width}
-                y1={y}
-                y2={y}
-                stroke="currentColor"
-                strokeOpacity="0.08"
-                strokeWidth="0.4"
-                vectorEffect="non-scaling-stroke"
-              />
-              <text
-                x={0.5}
-                y={y - 1}
-                fontSize="3.4"
-                fill="currentColor"
-                opacity="0.45"
-              >
-                {value} mm/u
-              </text>
-            </g>
-          );
-        })}
 
         {/* Bars. */}
         {samples.map((s, i) => {
