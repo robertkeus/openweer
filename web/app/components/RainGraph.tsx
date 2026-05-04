@@ -37,6 +37,28 @@ function colorFor(mm: number): string {
 export function RainGraph({ samples, height = 140 }: Props) {
   if (!samples.length) return null;
 
+  const allDry = samples.every((s) => s.mm_per_h < 0.1);
+  if (allDry) {
+    return (
+      <figure className="w-full">
+        <div
+          role="img"
+          aria-label="Geen neerslag verwacht in de komende 2 uur"
+          className="grid place-items-center gap-3 text-center text-[--color-ink-700]"
+          style={{ height: `${height}px` }}
+        >
+          <SunCloudIcon className="h-10 w-10 text-[--color-accent-600]" />
+          <p className="text-sm font-medium">Geen neerslag verwacht</p>
+        </div>
+        <figcaption className="mt-2 flex items-center justify-between text-xs text-[--color-ink-700]">
+          <span>{formatHm(samples[0].valid_at)}</span>
+          <span>nu &nbsp;→&nbsp; +2&nbsp;uur</span>
+          <span>{formatHm(samples[samples.length - 1].valid_at)}</span>
+        </figcaption>
+      </figure>
+    );
+  }
+
   const yMax = maxBound(samples);
   const width = 100; // viewBox width — scales to container.
   const barWidth = (width - BAR_GAP * (samples.length - 1)) / samples.length;
@@ -165,5 +187,30 @@ export function RainSummary({ samples }: SummaryProps) {
         </p>
       </div>
     </div>
+  );
+}
+
+function SunCloudIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 48 48" fill="none" {...props}>
+      <circle cx="32" cy="14" r="6" fill="var(--color-sun-400)" />
+      <g
+        stroke="var(--color-sun-400)"
+        strokeWidth="2"
+        strokeLinecap="round"
+      >
+        <line x1="32" y1="2" x2="32" y2="5" />
+        <line x1="44" y1="14" x2="47" y2="14" />
+        <line x1="40.5" y1="5.5" x2="42.6" y2="3.4" />
+      </g>
+      <path
+        d="M10 32a6 6 0 010-12 8 8 0 0115-3 5 5 0 014 9.5 4 4 0 01-3 5.5z"
+        fill="currentColor"
+        fillOpacity="0.18"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
