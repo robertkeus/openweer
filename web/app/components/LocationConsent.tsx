@@ -43,7 +43,11 @@ export function LocationConsent({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
-        className="relative w-full max-w-md rounded-3xl bg-[--color-surface] shadow-2xl border border-[--color-border] motion-safe:animate-[popIn_220ms_cubic-bezier(0.32,0.72,0,1)] overflow-hidden"
+        className="relative w-full max-w-md rounded-3xl shadow-2xl border motion-safe:animate-[popIn_220ms_cubic-bezier(0.32,0.72,0,1)] overflow-hidden"
+        style={{
+          background: "var(--color-surface)",
+          borderColor: "var(--color-border)",
+        }}
       >
         <div className="px-6 pt-7 pb-6 text-center">
           <Illustration className="mx-auto h-20 w-20" aria-hidden="true" />
@@ -63,7 +67,11 @@ export function LocationConsent({
           {error ? (
             <p
               role="alert"
-              className="mt-4 rounded-xl bg-[--color-danger-bg] px-3 py-2 text-sm text-[--color-danger-fg]"
+              className="mt-4 rounded-xl px-3 py-2 text-sm"
+              style={{
+                background: "var(--color-danger-bg)",
+                color: "var(--color-danger-fg)",
+              }}
             >
               {error}
             </p>
