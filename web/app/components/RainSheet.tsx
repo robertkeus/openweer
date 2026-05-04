@@ -102,8 +102,9 @@ export function RainSheet({ peek, expanded }: Props) {
         ref={sheetRef}
         role="dialog"
         aria-label="Regen­voorspelling"
-        className="lg:hidden fixed inset-x-0 bottom-0 z-30 glass-card rounded-b-none rounded-t-2xl will-change-[height,transform] flex flex-col"
+        className="lg:hidden fixed inset-x-0 z-30 glass-card rounded-b-none rounded-t-2xl will-change-[height,transform] flex flex-col"
         style={{
+          bottom: "var(--timeline-height)",
           height: SNAP_VAR[snap],
           transform: dragOffset !== null ? `translateY(${dragOffset}px)` : undefined,
           transition:
@@ -135,41 +136,16 @@ export function RainSheet({ peek, expanded }: Props) {
         </div>
       </div>
 
-      {/* ---- Desktop (lg+) bottom-left floating card ---- */}
-      <div className="hidden lg:flex fixed left-4 bottom-4 z-30 glass-card flex-col w-[28rem] max-h-[calc(100vh-7rem)]">
-        <div className="flex-1 overflow-y-auto p-4">
+      {/* ---- Desktop (lg+) bottom-left floating card — always shows full content ---- */}
+      <div
+        className="hidden lg:flex fixed left-4 z-30 glass-card flex-col w-[28rem] max-h-[calc(100vh-7rem-var(--timeline-height))]"
+        style={{ bottom: "calc(var(--timeline-height) + 1rem)" }}
+      >
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {peek}
-          {expanded_ ? <div className="mt-4 space-y-4">{expanded}</div> : null}
+          {expanded}
         </div>
-        <button
-          type="button"
-          onClick={() => setSnap(expanded_ ? "peek" : "full")}
-          aria-expanded={expanded_}
-          aria-label={
-            expanded_ ? "Klap voorspelling in" : "Klap voorspelling uit"
-          }
-          className="px-4 py-2 border-t border-[--color-ink-100] text-sm font-medium text-[--color-ink-700] hover:bg-[--color-ink-50] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[--color-accent-500] flex items-center justify-center gap-2"
-        >
-          {expanded_ ? "Minder details" : "Meer details"}
-          <ChevronIcon
-            className={`h-3 w-3 transition-transform ${expanded_ ? "rotate-180" : ""}`}
-          />
-        </button>
       </div>
     </>
-  );
-}
-
-function ChevronIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" {...props}>
-      <path
-        d="M18 15l-6-6-6 6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
