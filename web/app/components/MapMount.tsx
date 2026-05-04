@@ -13,6 +13,7 @@ interface Props {
   frames: Frame[];
   currentIndex: number;
   center?: { lat: number; lon: number };
+  onLocationPick?: (loc: { name: string; lat: number; lon: number }) => void;
   className?: string;
 }
 

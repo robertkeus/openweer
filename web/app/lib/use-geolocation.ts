@@ -34,7 +34,7 @@ interface NominatimReverseResult {
  * Reverse-geocode lat/lon to a Dutch place name via Nominatim. Returns null
  * on any failure — callers should fall back to a generic label.
  */
-async function reverseGeocode(
+export async function reverseGeocode(
   lat: number,
   lon: number,
   signal?: AbortSignal,

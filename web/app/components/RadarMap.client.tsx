@@ -9,12 +9,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { Frame } from "~/lib/api";
 import { tileUrlTemplate } from "~/lib/frames";
+import { isInNetherlands } from "~/lib/geolocation";
+import { reverseGeocode } from "~/lib/use-geolocation";
 
 interface Props {
   frames: Frame[];
   currentIndex: number;
   /** Optional center the map should fly to. */
   center?: { lat: number; lon: number };
+  /** Fired when the user double-clicks a point on the map. */
+  onLocationPick?: (loc: { name: string; lat: number; lon: number }) => void;
   className?: string;
 }
 
@@ -43,11 +47,20 @@ export function RadarMap({
   frames,
   currentIndex,
   center,
+  onLocationPick,
   className = "absolute inset-0",
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<unknown>(null);
+  const markerRef = useRef<unknown>(null);
+  const onLocationPickRef = useRef(onLocationPick);
   const [mapReady, setMapReady] = useState(false);
+
+  // Keep the ref pointing at the latest callback so the dblclick handler
+  // (registered once when the map mounts) always sees the current state.
+  useEffect(() => {
+    onLocationPickRef.current = onLocationPick;
+  }, [onLocationPick]);
 
   // ---- 1) Mount the map once ----
   useEffect(() => {
@@ -81,6 +94,28 @@ export function RadarMap({
         }),
         "bottom-right",
       );
+
+      // Use double-click to pick a location instead of zooming in.
+      m.doubleClickZoom.disable();
+      m.on("dblclick", (e: { lngLat: { lng: number; lat: number } }) => {
+        const { lng, lat } = e.lngLat;
+        if (!isInNetherlands({ lat, lon: lng })) return;
+        const round = (v: number) => Math.round(v * 10000) / 10000;
+        const rlat = round(lat);
+        const rlon = round(lng);
+        // Optimistically apply the pin with a coordinate-style label, then
+        // upgrade to the reverse-geocoded city name when Nominatim responds.
+        const fallback = `${rlat.toFixed(2)}°N, ${rlon.toFixed(2)}°O`;
+        onLocationPickRef.current?.({
+          name: fallback,
+          lat: rlat,
+          lon: rlon,
+        });
+        void reverseGeocode(rlat, rlon).then((name) => {
+          if (!name) return;
+          onLocationPickRef.current?.({ name, lat: rlat, lon: rlon });
+        });
+      });
 
       m.once("load", () => {
         if (!cancelled) setMapReady(true);
@@ -149,13 +184,39 @@ export function RadarMap({
     });
   }, [currentIndex, mapReady, frames]);
 
-  // ---- 4) Fly to a new center when the parent updates the location ----
+  // ---- 4) Fly to a new center + drop a marker at the selected location ----
   useEffect(() => {
     if (!mapReady || !center) return;
     const m = mapRef.current as
       | { flyTo: (opts: { center: [number, number]; zoom?: number }) => void }
       | null;
     m?.flyTo({ center: [center.lon, center.lat], zoom: 9 });
+
+    void (async () => {
+      const maplibre = await import("maplibre-gl");
+      const map = mapRef.current as InstanceType<typeof maplibre.Map> | null;
+      if (!map) return;
+      const existing = markerRef.current as InstanceType<
+        typeof maplibre.Marker
+      > | null;
+      if (existing) {
+        existing.setLngLat([center.lon, center.lat]);
+        return;
+      }
+      const el = document.createElement("div");
+      el.className = "radar-marker";
+      el.innerHTML = `
+        <span class="radar-marker__pulse" aria-hidden="true"></span>
+        <svg viewBox="0 0 32 40" width="28" height="35" aria-hidden="true">
+          <path d="M16 2c-7.2 0-13 5.6-13 12.6 0 9 13 23.4 13 23.4s13-14.4 13-23.4C29 7.6 23.2 2 16 2Z" fill="var(--color-accent-600)" stroke="white" stroke-width="2"/>
+          <circle cx="16" cy="14" r="4.5" fill="white"/>
+        </svg>
+      `;
+      const marker = new maplibre.Marker({ element: el, anchor: "bottom" })
+        .setLngLat([center.lon, center.lat])
+        .addTo(map);
+      markerRef.current = marker;
+    })();
   }, [mapReady, center?.lat, center?.lon]);
 
   // ---- 5) Swap basemap style when the dark class flips on <html> ----

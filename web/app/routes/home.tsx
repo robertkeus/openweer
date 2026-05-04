@@ -119,6 +119,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             frames={timeline.frames}
             currentIndex={timeline.currentIndex}
             center={{ lat: location.lat, lon: location.lon }}
+            onLocationPick={setLocation}
             className="absolute inset-0"
           />
         )}
