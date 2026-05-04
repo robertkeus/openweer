@@ -231,10 +231,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           </div>
           {/* Time chip is desktop/tablet only — on mobile the slider's "Nu" pill covers this. */}
           <div className="hidden sm:block pointer-events-auto flex-none ml-auto">
-            <CurrentTimeChip
-              frame={timeline.current}
-              sample={rain?.samples[0]}
-            />
+            <CurrentTimeChip samples={rain?.samples} />
           </div>
           <div className="pointer-events-auto flex-none">
             <ThemeToggle variant="floating" />

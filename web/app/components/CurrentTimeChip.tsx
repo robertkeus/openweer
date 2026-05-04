@@ -1,22 +1,34 @@
-import type { Frame, RainSample } from "~/lib/api";
+import { useEffect, useState } from "react";
+import type { RainSample } from "~/lib/api";
 import { formatHm } from "~/lib/format";
 
 interface Props {
-  frame: Frame | undefined;
-  /** Optional rain reading at the current moment (renders a second line). */
-  sample?: RainSample;
+  /** Optional list of rain samples; the chip picks the one closest to "now". */
+  samples?: readonly RainSample[];
 }
 
-/** Floating chip that mirrors the slider's current time + rain reading. */
-export function CurrentTimeChip({ frame, sample }: Props) {
-  if (!frame) return null;
+/**
+ * Floating wall-clock chip. Shows the user's current local time (NL) and,
+ * if rain samples are available, the rain reading at the moment closest
+ * to right now. Re-ticks every 30 seconds so it stays accurate during
+ * long page sessions.
+ */
+export function CurrentTimeChip({ samples }: Props) {
+  const [now, setNow] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    // Tick on the minute boundary so "HH:mm" always lines up.
+    const id = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const sample = samples?.length ? closestSample(samples, now.getTime()) : null;
+  const nowIso = now.toISOString();
+
   return (
-    <div
-      aria-live="polite"
-      className="glass-card px-3 py-2 text-right"
-    >
+    <div aria-live="polite" className="glass-card px-3 py-2 text-right">
       <p className="text-base font-semibold tabular-nums leading-none">
-        {formatHm(frame.ts)}
+        {formatHm(nowIso)}
       </p>
       {sample ? (
         <p className="mt-1 text-xs tabular-nums text-[--color-ink-700]">
@@ -25,4 +37,20 @@ export function CurrentTimeChip({ frame, sample }: Props) {
       ) : null}
     </div>
   );
+}
+
+function closestSample(
+  samples: readonly RainSample[],
+  nowMs: number,
+): RainSample {
+  let best = samples[0];
+  let bestDelta = Math.abs(new Date(best.valid_at).getTime() - nowMs);
+  for (const s of samples.slice(1)) {
+    const d = Math.abs(new Date(s.valid_at).getTime() - nowMs);
+    if (d < bestDelta) {
+      best = s;
+      bestDelta = d;
+    }
+  }
+  return best;
 }
