@@ -12,7 +12,7 @@ from starlette.middleware.gzip import GZipMiddleware
 
 from openweer import __version__
 from openweer.api.dependencies import AppState
-from openweer.api.routes import chat, frames, health, rain
+from openweer.api.routes import chat, frames, health, rain, weather
 from openweer.api.security import SecurityHeadersMiddleware
 from openweer.settings import Settings, get_settings
 
@@ -56,6 +56,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(frames.router)
     app.include_router(rain.router)
+    app.include_router(weather.router)
     app.include_router(chat.router)
 
     # ---- /tiles/* static files (dev convenience; Caddy bypasses this in prod) ----

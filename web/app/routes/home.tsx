@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { Route } from "./+types/home";
-import { ApiError, api, type RainResponse } from "~/lib/api";
+import { ApiError, api, type RainResponse, type WeatherResponse } from "~/lib/api";
 import { AiChatPanel } from "~/components/AiChatPanel";
 import { CurrentTimeChip } from "~/components/CurrentTimeChip";
 import { LocationBar, type SelectedLocation } from "~/components/LocationBar";
@@ -15,6 +15,7 @@ import { RecenterButton } from "~/components/RecenterButton";
 import { ThemeToggle } from "~/components/ThemeToggle";
 import { Timeline } from "~/components/Timeline";
 import { WeatherNowCard } from "~/components/WeatherNowCard";
+import { WeatherTab } from "~/components/WeatherTab";
 import { buildContext } from "~/lib/ai-chat";
 import { DEFAULT_LOCATION } from "~/lib/locations";
 import { useGeolocation } from "~/lib/use-geolocation";
@@ -33,9 +34,10 @@ export function meta() {
 }
 
 export async function loader() {
-  const [frames, rain] = await Promise.allSettled([
+  const [frames, rain, weather] = await Promise.allSettled([
     api.frames(),
     api.rain(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon),
+    api.weather(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lon),
   ]);
 
   return {
@@ -51,16 +53,33 @@ export async function loader() {
           ? "Nog geen radardata beschikbaar — we proberen het automatisch opnieuw."
           : "De voorspelling is even niet bereikbaar."
         : undefined,
+    weather: weather.status === "fulfilled" ? weather.value : null,
+    weatherError:
+      weather.status === "rejected"
+        ? "Het weerbeeld is even niet bereikbaar."
+        : undefined,
   };
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { frames, framesErrored, rain: initialRain, rainError } = loaderData;
+  const {
+    frames,
+    framesErrored,
+    rain: initialRain,
+    rainError,
+    weather: initialWeather,
+    weatherError,
+  } = loaderData;
 
   const [location, setLocation] = useState<SelectedLocation>(DEFAULT_LOCATION);
   const [rain, setRain] = useState<RainResponse | null>(initialRain);
   const [rainLoading, setRainLoading] = useState(false);
   const [rainErrMsg, setRainErrMsg] = useState<string | undefined>(rainError);
+  const [weather, setWeather] = useState<WeatherResponse | null>(initialWeather);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherErrMsg, setWeatherErrMsg] = useState<string | undefined>(
+    weatherError,
+  );
   const [consentDismissed, setConsentDismissed] = useState(false);
 
   const timeline = useRadarTimeline(frames.frames);
@@ -104,6 +123,28 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     [],
   );
 
+  const refetchWeather = useCallback(
+    async (lat: number, lon: number, signal: AbortSignal) => {
+      setWeatherLoading(true);
+      setWeatherErrMsg(undefined);
+      try {
+        const data = await api.weather(lat, lon);
+        if (!signal.aborted) setWeather(data);
+      } catch (err) {
+        if (signal.aborted) return;
+        if (err instanceof ApiError && err.status === 503) {
+          setWeatherErrMsg("Nog geen waarnemingen beschikbaar.");
+        } else {
+          setWeatherErrMsg("Het weerbeeld is even niet bereikbaar.");
+        }
+        setWeather(null);
+      } finally {
+        if (!signal.aborted) setWeatherLoading(false);
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (
       location.lat === DEFAULT_LOCATION.lat &&
@@ -113,8 +154,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     }
     const ctrl = new AbortController();
     refetchRain(location.lat, location.lon, ctrl.signal);
+    refetchWeather(location.lat, location.lon, ctrl.signal);
     return () => ctrl.abort();
-  }, [location.lat, location.lon, refetchRain]);
+  }, [location.lat, location.lon, refetchRain, refetchWeather]);
 
   return (
     <div className="map-shell fixed inset-0 overflow-hidden">
@@ -189,6 +231,13 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       <RainSheet
         defaultTab="chat"
         chat={<AiChatPanel context={chatContext} />}
+        weather={
+          <WeatherTab
+            weather={weather}
+            loading={weatherLoading}
+            errorMessage={weatherErrMsg}
+          />
+        }
         details={
           <>
             {rainErrMsg ? (

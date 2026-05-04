@@ -98,6 +98,54 @@ export const HealthResponseSchema = z.object({
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 
+const ConditionKindSchema = z.enum([
+  "clear",
+  "partly-cloudy",
+  "cloudy",
+  "fog",
+  "drizzle",
+  "rain",
+  "thunder",
+  "snow",
+  "unknown",
+]);
+
+const WeatherStationSchema = z.object({
+  name: z.string(),
+  id: z.string(),
+  lat: z.number(),
+  lon: z.number(),
+  distance_km: z.number(),
+});
+
+const CurrentWeatherSchema = z.object({
+  observed_at: z.string(),
+  temperature_c: z.number().nullable(),
+  feels_like_c: z.number().nullable(),
+  condition: ConditionKindSchema,
+  condition_label: z.string(),
+  wind_speed_mps: z.number().nullable(),
+  wind_speed_bft: z.number().int().nullable(),
+  wind_direction_deg: z.number().nullable(),
+  wind_direction_compass: z.string().nullable(),
+  humidity_pct: z.number().nullable(),
+  pressure_hpa: z.number().nullable(),
+  rainfall_1h_mm: z.number().nullable(),
+  rainfall_24h_mm: z.number().nullable(),
+  cloud_cover_octas: z.number().nullable(),
+  visibility_m: z.number().nullable(),
+});
+
+export const WeatherResponseSchema = z.object({
+  station: WeatherStationSchema,
+  current: CurrentWeatherSchema,
+});
+
+export type ConditionKind = z.infer<typeof ConditionKindSchema>;
+export type WeatherStation = z.infer<typeof WeatherStationSchema>;
+export type CurrentWeather = z.infer<typeof CurrentWeatherSchema>;
+export type WeatherResponse = z.infer<typeof WeatherResponseSchema>;
+
 // ---- public API ----
 
 export const api = {
@@ -107,5 +155,10 @@ export const api = {
     fetchJson(
       `/api/rain/${lat.toFixed(4)}/${lon.toFixed(4)}`,
       RainResponseSchema,
+    ),
+  weather: (lat: number, lon: number) =>
+    fetchJson(
+      `/api/weather/${lat.toFixed(4)}/${lon.toFixed(4)}`,
+      WeatherResponseSchema,
     ),
 };
