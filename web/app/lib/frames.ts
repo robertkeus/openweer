@@ -28,23 +28,29 @@ export function partitionFrames(frames: readonly Frame[]) {
 
 /** Past observations to retain on the slider (in milliseconds). */
 const HISTORY_WINDOW_MS = 2 * 60 * 60 * 1000; // 2h
-/** Forecast horizon to retain on the slider (in milliseconds). */
-const FORECAST_WINDOW_MS = 2 * 60 * 60 * 1000; // 2h
+/**
+ * Forecast horizon to retain on the slider. KNMI's radar nowcast caps at
+ * 2h, so today the slider effectively goes to "now + 2h"; the extra cap
+ * lets longer-horizon hourly forecast frames flow in automatically when a
+ * future ingest pipeline starts producing them.
+ */
+const FORECAST_WINDOW_MS = 4 * 60 * 60 * 1000; // 4h
 
 export function defaultPlayableFrames(frames: readonly Frame[]): Frame[] {
   /**
-   * Auto-loop range: a rolling window of past observed history and forward
-   * nowcast (excludes hourly tail). Sorted globally by timestamp so the
-   * slider reads left-to-right as past → future regardless of how many
-   * overlapping ingest cycles produced the manifest.
+   * Auto-loop range: a rolling window of past observed history plus
+   * forward nowcast (and hourly forecast tail when present). Sorted
+   * globally by timestamp so the slider reads left-to-right as past →
+   * future regardless of how many overlapping ingest cycles produced
+   * the manifest.
    *
    * The window is anchored on the latest observed frame: HISTORY_WINDOW_MS
-   * before, FORECAST_WINDOW_MS after. This keeps the tick density readable
-   * (~4h span) even when the manifest holds many days of data.
+   * before, FORECAST_WINDOW_MS after. This keeps tick density readable
+   * even when the manifest holds many days of data.
    */
-  const { observed, nowcast } = partitionFrames(frames);
-  if (!observed.length && !nowcast.length) return [];
-  const all = [...observed, ...nowcast].sort(byTs);
+  const { observed, nowcast, hourly } = partitionFrames(frames);
+  if (!observed.length && !nowcast.length && !hourly.length) return [];
+  const all = [...observed, ...nowcast, ...hourly].sort(byTs);
 
   const lastObserved = observed.length ? observed[observed.length - 1] : null;
   const anchorMs = lastObserved

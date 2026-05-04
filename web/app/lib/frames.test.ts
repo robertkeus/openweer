@@ -32,14 +32,28 @@ describe("partitionFrames", () => {
 });
 
 describe("defaultPlayableFrames", () => {
-  it("returns observed + nowcast, never hourly", () => {
+  it("includes observed + nowcast + hourly within the +4h window", () => {
     const frames = [
       f("o", "observed", "2026-05-03T05:55Z"),
       f("n", "nowcast", "2026-05-03T06:00Z"),
       f("h", "hourly", "2026-05-03T09:00Z"),
     ];
     const playable = defaultPlayableFrames(frames);
-    expect(playable.map((x) => x.kind)).toEqual(["observed", "nowcast"]);
+    expect(playable.map((x) => x.kind)).toEqual([
+      "observed",
+      "nowcast",
+      "hourly",
+    ]);
+  });
+
+  it("clips hourly frames beyond +4h from the latest observation", () => {
+    const frames = [
+      f("o", "observed", "2026-05-03T05:55Z"),
+      f("h1", "hourly", "2026-05-03T08:00Z"), // ~2h after — in window
+      f("h2", "hourly", "2026-05-03T11:00Z"), // ~5h after — clipped
+    ];
+    const playable = defaultPlayableFrames(frames);
+    expect(playable.map((x) => x.id)).toEqual(["o", "h1"]);
   });
 });
 
