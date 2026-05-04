@@ -171,11 +171,104 @@ body {
   background: var(--color-ink-50);
 }
 
-/* Sheet snap heights — referenced by RainSheet. */
+/* Sheet snap heights — referenced by RainSheet. The sheet sits *above* the
+   bottom timeline, so heights exclude the timeline strip. */
 :root {
-  --sheet-peek: 22vh;
-  --sheet-half: 50vh;
-  --sheet-full: 86vh;
+  --timeline-height: 6.5rem;
+  --sheet-peek: 16vh;
+  --sheet-half: 44vh;
+  --sheet-full: calc(86vh - var(--timeline-height));
+}
+
+/* Timeline panel — more opaque than glass-card so the bars and controls
+   pop against the map background. */
+.timeline-panel {
+  background: color-mix(in oklab, var(--color-overlay) 96%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.06),
+    0 12px 32px rgb(15 23 42 / 0.16);
+}
+:root.dark .timeline-panel {
+  background: color-mix(in oklab, var(--color-overlay) 92%, transparent);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.45),
+    0 12px 32px rgb(0 0 0 / 0.55);
+}
+
+/* Play / pause — accent ring + tight focus state for prominence. */
+.timeline-play-btn {
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--color-accent-600) 22%, transparent),
+    0 4px 12px color-mix(in oklab, var(--color-accent-600) 35%, transparent);
+}
+.timeline-play-btn:hover:not(:disabled) {
+  box-shadow:
+    0 0 0 4px color-mix(in oklab, var(--color-accent-500) 28%, transparent),
+    0 6px 16px color-mix(in oklab, var(--color-accent-500) 45%, transparent);
+}
+
+/* Cursor pill — high-contrast time label sitting above the track. */
+.timeline-cursor-pill {
+  display: inline-block;
+  padding: 0.125rem 0.4rem;
+  border-radius: 0.5rem;
+  background: var(--color-accent-600);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow:
+    0 0 0 1.5px var(--color-overlay),
+    0 2px 6px rgb(15 23 42 / 0.25);
+}
+:root.dark .timeline-cursor-pill {
+  box-shadow:
+    0 0 0 1.5px var(--color-overlay),
+    0 2px 6px rgb(0 0 0 / 0.6);
+}
+
+/* Hide the native range track/thumb while keeping the input interactive
+   (the visual track is the intensity bars rendered behind the input). */
+.timeline-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline-offset: 4px;
+}
+.timeline-range::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 100%;
+}
+.timeline-range::-moz-range-track {
+  background: transparent;
+  height: 100%;
+}
+.timeline-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  cursor: grab;
+}
+.timeline-range::-moz-range-thumb {
+  width: 24px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  cursor: grab;
+}
+.timeline-range:active::-webkit-slider-thumb {
+  cursor: grabbing;
+}
+.timeline-range:active::-moz-range-thumb {
+  cursor: grabbing;
 }
 
 /* Prevent rubber-band scroll on the home/map route. */
@@ -186,6 +279,46 @@ body {
 .map-shell .maplibregl-canvas,
 .map-shell .maplibregl-map {
   touch-action: pan-x pan-y;
+}
+
+/* Selected-location marker on the radar map. */
+.radar-marker {
+  position: relative;
+  width: 28px;
+  height: 35px;
+  pointer-events: none;
+}
+.radar-marker svg {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 4px 6px rgb(15 23 42 / 0.25));
+}
+.radar-marker__pulse {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: var(--color-accent-500);
+  opacity: 0.55;
+  animation: markerPulse 2s ease-out infinite;
+}
+@keyframes markerPulse {
+  0% {
+    transform: translate(-50%, 0) scale(0.6);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(-50%, 0) scale(2.4);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .radar-marker__pulse {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 /* Modal entrance animations (skipped under prefers-reduced-motion). */

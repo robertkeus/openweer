@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { Frame } from "~/lib/api";
-import { TimeSlider } from "./TimeSlider";
+import type { Frame, RainSample } from "~/lib/api";
+import { Timeline } from "./Timeline";
 
 const f = (id: string, kind: Frame["kind"], iso: string): Frame => ({
   id,
@@ -18,10 +18,15 @@ const FRAMES: Frame[] = [
   f("c", "nowcast", "2026-05-03T06:35Z"),
 ];
 
-describe("TimeSlider", () => {
+const SAMPLES: RainSample[] = [
+  { minutes_ahead: 0, mm_per_h: 0.4, valid_at: "2026-05-03T06:30Z" },
+  { minutes_ahead: 5, mm_per_h: 1.2, valid_at: "2026-05-03T06:35Z" },
+];
+
+describe("Timeline", () => {
   it("renders a play button at rest", () => {
     render(
-      <TimeSlider
+      <Timeline
         frames={FRAMES}
         currentIndex={1}
         isPlaying={false}
@@ -29,13 +34,29 @@ describe("TimeSlider", () => {
         onTogglePlay={() => {}}
       />,
     );
-    expect(screen.getByRole("button", { name: /Speel af/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Speel af/ }),
+    ).toBeInTheDocument();
   });
 
-  it("calls onSeek when slider changes", () => {
+  it("opens with the cursor at nowIndex via aria-valuenow", () => {
+    render(
+      <Timeline
+        frames={FRAMES}
+        currentIndex={2}
+        nowIndex={2}
+        isPlaying={false}
+        onSeek={() => {}}
+        onTogglePlay={() => {}}
+      />,
+    );
+    expect(screen.getByRole("slider")).toHaveAttribute("aria-valuenow", "2");
+  });
+
+  it("calls onSeek when the slider is dragged", () => {
     const onSeek = vi.fn();
     render(
-      <TimeSlider
+      <Timeline
         frames={FRAMES}
         currentIndex={0}
         isPlaying={false}
@@ -52,7 +73,7 @@ describe("TimeSlider", () => {
     const onTogglePlay = vi.fn();
     const user = userEvent.setup();
     render(
-      <TimeSlider
+      <Timeline
         frames={FRAMES}
         currentIndex={1}
         isPlaying={false}
@@ -64,9 +85,24 @@ describe("TimeSlider", () => {
     expect(onTogglePlay).toHaveBeenCalledOnce();
   });
 
+  it("toggles play with the space-bar shortcut while focused", () => {
+    const onTogglePlay = vi.fn();
+    render(
+      <Timeline
+        frames={FRAMES}
+        currentIndex={1}
+        isPlaying={false}
+        onSeek={() => {}}
+        onTogglePlay={onTogglePlay}
+      />,
+    );
+    fireEvent.keyDown(screen.getByRole("slider"), { key: " " });
+    expect(onTogglePlay).toHaveBeenCalledOnce();
+  });
+
   it("shows pause label when playing", () => {
     render(
-      <TimeSlider
+      <Timeline
         frames={FRAMES}
         currentIndex={0}
         isPlaying={true}
@@ -81,7 +117,7 @@ describe("TimeSlider", () => {
 
   it("renders nothing when there are no frames", () => {
     const { container } = render(
-      <TimeSlider
+      <Timeline
         frames={[]}
         currentIndex={0}
         isPlaying={false}
@@ -94,7 +130,7 @@ describe("TimeSlider", () => {
 
   it("exposes the current frame's time as the slider's aria-valuetext", () => {
     render(
-      <TimeSlider
+      <Timeline
         frames={FRAMES}
         currentIndex={1}
         nowIndex={1}
@@ -108,5 +144,39 @@ describe("TimeSlider", () => {
       .getByRole("slider")
       .getAttribute("aria-valuetext");
     expect(valueText).toContain("08:30");
+  });
+
+  it("renders intensity bars when rain samples are provided", () => {
+    const { container } = render(
+      <Timeline
+        frames={FRAMES}
+        currentIndex={1}
+        nowIndex={1}
+        isPlaying={false}
+        rainSamples={SAMPLES}
+        onSeek={() => {}}
+        onTogglePlay={() => {}}
+      />,
+    );
+    // One bar per frame.
+    const bars = container.querySelectorAll(
+      "[data-testid='intensity-bars'] > span",
+    );
+    expect(bars.length).toBe(FRAMES.length);
+  });
+
+  it("handles empty rain-sample arrays without crashing", () => {
+    render(
+      <Timeline
+        frames={FRAMES}
+        currentIndex={1}
+        nowIndex={1}
+        isPlaying={false}
+        rainSamples={[]}
+        onSeek={() => {}}
+        onTogglePlay={() => {}}
+      />,
+    );
+    expect(screen.getByRole("slider")).toBeInTheDocument();
   });
 });
