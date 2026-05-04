@@ -15,7 +15,7 @@ describe("RainGraph", () => {
     render(<RainGraph samples={samples} />);
     const svg = screen.getByRole("img");
     expect(svg).toBeInTheDocument();
-    expect(svg.querySelectorAll("rect").length).toBe(3);
+    expect(svg.querySelectorAll("rect[data-rain-bar]").length).toBe(3);
   });
 
   it("renders nothing for empty samples", () => {

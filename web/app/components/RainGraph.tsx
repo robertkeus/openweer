@@ -3,6 +3,7 @@
  * bundle tight and the rendering 100% controllable.
  */
 
+import { useState } from "react";
 import type { RainSample } from "~/lib/api";
 import { formatHm, formatMmPerHour, rainVerdict } from "~/lib/format";
 
@@ -66,6 +67,9 @@ export function RainGraph({ samples, height = 140 }: Props) {
   const descId = `rain-graph-desc-${samples[0].valid_at}`;
   const totalMm = (samples.reduce((s, x) => s + x.mm_per_h, 0) / 12).toFixed(1);
 
+  const [hovered, setHovered] = useState<number | null>(null);
+  const hoveredSample = hovered !== null ? samples[hovered] : null;
+
   return (
     <figure className="w-full">
       <svg
@@ -75,6 +79,7 @@ export function RainGraph({ samples, height = 140 }: Props) {
         aria-labelledby={titleId}
         aria-describedby={descId}
         className="w-full h-[140px]"
+        onPointerLeave={() => setHovered(null)}
       >
         <title id={titleId}>Neerslag de komende 2 uur</title>
         <desc id={descId}>
@@ -82,28 +87,65 @@ export function RainGraph({ samples, height = 140 }: Props) {
           Totaal naar verwachting {totalMm} mm.
         </desc>
 
-        {/* Bars. */}
+        {/* Bars + invisible hit areas spanning the full chart height so
+            very thin (near-zero) bars are still hoverable. */}
         {samples.map((s, i) => {
           const x = i * (barWidth + BAR_GAP);
-          const h = Math.max(1, (Math.min(s.mm_per_h, yMax) / yMax) * (height - 18));
+          const h = Math.max(
+            1,
+            (Math.min(s.mm_per_h, yMax) / yMax) * (height - 18),
+          );
           const y = height - h - 4;
+          const isHovered = hovered === i;
           return (
-            <rect
-              key={s.valid_at}
-              x={x}
-              y={y}
-              width={barWidth}
-              height={h}
-              fill={colorFor(s.mm_per_h)}
-              rx="0.4"
-            />
+            <g key={s.valid_at}>
+              <rect
+                data-rain-bar=""
+                x={x}
+                y={y}
+                width={barWidth}
+                height={h}
+                fill={colorFor(s.mm_per_h)}
+                rx="0.4"
+                opacity={hovered !== null && !isHovered ? 0.55 : 1}
+              />
+              <rect
+                x={x - BAR_GAP / 2}
+                y={0}
+                width={barWidth + BAR_GAP}
+                height={height}
+                fill="transparent"
+                className="cursor-crosshair focus:outline-none"
+                tabIndex={0}
+                role="button"
+                aria-label={`${formatHm(s.valid_at)}: ${formatMmPerHour(s.mm_per_h)}`}
+                onPointerEnter={() => setHovered(i)}
+                onFocus={() => setHovered(i)}
+                onBlur={() => setHovered(null)}
+              >
+                <title>{`${formatHm(s.valid_at)} — ${formatMmPerHour(s.mm_per_h)}`}</title>
+              </rect>
+            </g>
           );
         })}
       </svg>
-      <figcaption className="mt-2 flex items-center justify-between text-xs text-[--color-ink-700]">
-        <span>{formatHm(samples[0].valid_at)}</span>
-        <span>nu &nbsp;→&nbsp; +2&nbsp;uur</span>
-        <span>{formatHm(samples[samples.length - 1].valid_at)}</span>
+      <figcaption
+        className="mt-2 flex items-center justify-between text-xs text-[--color-ink-700] tabular-nums min-h-[1rem]"
+        aria-live="polite"
+      >
+        {hoveredSample ? (
+          <span className="text-[--color-ink-900] font-medium">
+            {formatHm(hoveredSample.valid_at)}
+            <span className="mx-2 text-[--color-ink-700]">·</span>
+            {formatMmPerHour(hoveredSample.mm_per_h)}
+          </span>
+        ) : (
+          <>
+            <span>{formatHm(samples[0].valid_at)}</span>
+            <span>nu &nbsp;→&nbsp; +2&nbsp;uur</span>
+            <span>{formatHm(samples[samples.length - 1].valid_at)}</span>
+          </>
+        )}
       </figcaption>
     </figure>
   );
