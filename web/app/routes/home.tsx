@@ -25,6 +25,7 @@ import { WeatherTab } from "~/components/WeatherTab";
 import { buildContext } from "~/lib/ai-chat";
 import { DEFAULT_LOCATION } from "~/lib/locations";
 import { useGeolocation } from "~/lib/use-geolocation";
+import { useLiveFrames } from "~/lib/use-live-frames";
 import { useRadarTimeline } from "~/lib/use-radar-timeline";
 import { useTheme } from "~/lib/theme";
 
@@ -100,7 +101,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   );
   const [consentDismissed, setConsentDismissed] = useState(false);
 
-  const timeline = useRadarTimeline(frames.frames);
+  const liveFrames = useLiveFrames(frames);
+  const timeline = useRadarTimeline(liveFrames);
   const { resolved: resolvedTheme } = useTheme();
   const chatContext = buildContext({
     location,
