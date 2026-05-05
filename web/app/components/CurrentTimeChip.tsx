@@ -14,13 +14,17 @@ interface Props {
  * long page sessions.
  */
 export function CurrentTimeChip({ samples }: Props) {
-  const [now, setNow] = useState<Date>(() => new Date());
+  // Strictly client-side: initialise to null so SSR renders nothing and any
+  // cached HTML can't freeze the displayed time.
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
-    // Tick on the minute boundary so "HH:mm" always lines up.
+    setNow(new Date());
     const id = window.setInterval(() => setNow(new Date()), 30_000);
     return () => window.clearInterval(id);
   }, []);
+
+  if (!now) return null;
 
   const sample = samples?.length ? closestSample(samples, now.getTime()) : null;
   const nowIso = now.toISOString();
