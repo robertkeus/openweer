@@ -163,8 +163,8 @@ def _reproject_to_3857(
         src_w,
         src_h,
         *_src_bounds_from(sub.transform, src_w, src_h),
-        dst_width=int((dst_bounds_3857[2] - dst_bounds_3857[0]) / 250),
-        dst_height=int((dst_bounds_3857[3] - dst_bounds_3857[1]) / 250),
+        dst_width=int((dst_bounds_3857[2] - dst_bounds_3857[0]) / 125),
+        dst_height=int((dst_bounds_3857[3] - dst_bounds_3857[1]) / 125),
     )
     # We pin the destination grid to NL bbox so every frame shares an exact extent.
     px_x = (dst_bounds_3857[2] - dst_bounds_3857[0]) / dst_w
@@ -181,7 +181,7 @@ def _reproject_to_3857(
         src_crs=sub.crs,
         dst_transform=pinned_transform,
         dst_crs=WEB_MERCATOR,
-        resampling=Resampling.nearest,
+        resampling=Resampling.bilinear,
         src_nodata=np.nan,
         dst_nodata=np.nan,
     )
@@ -228,7 +228,7 @@ def _read_tile(
     x: int,
     y: int,
 ) -> np.ndarray | None:
-    """Vectorised nearest-neighbour resample from `rgba` (in 3857) into a 256-px tile."""
+    """Vectorised bilinear resample from `rgba` (in 3857) into a 256-px tile."""
     tile_bounds = _tile_bounds_3857(z, x, y)
     src_left, src_bottom, src_right, src_top = dst_bounds_3857
     # Tile entirely outside source raster → nothing to do.
@@ -250,21 +250,41 @@ def _read_tile(
     xs = tile_bounds[0] + (np.arange(TILE_SIZE, dtype=np.float64) + 0.5) * pixel_w
     ys = tile_bounds[3] - (np.arange(TILE_SIZE, dtype=np.float64) + 0.5) * pixel_h
 
-    # Fractional source-pixel indices for every output column / row.
-    src_cols = ((xs - src_left) * inv_src_x).astype(np.int32)
-    src_rows = ((src_top - ys) * inv_src_y).astype(np.int32)
+    # Continuous source-pixel coordinates (top-left convention: shift by -0.5 from centres).
+    src_cols_f = (xs - src_left) * inv_src_x - 0.5
+    src_rows_f = (src_top - ys) * inv_src_y - 0.5
 
-    col_mask = (src_cols >= 0) & (src_cols < src_w)
-    row_mask = (src_rows >= 0) & (src_rows < src_h)
+    c0 = np.floor(src_cols_f).astype(np.int32)
+    r0 = np.floor(src_rows_f).astype(np.int32)
+    c1 = c0 + 1
+    r1 = r0 + 1
+    fx = (src_cols_f - c0).astype(np.float32)
+    fy = (src_rows_f - r0).astype(np.float32)
+
+    col_mask = (c1 >= 0) & (c0 < src_w)
+    row_mask = (r1 >= 0) & (r0 < src_h)
     if not col_mask.any() or not row_mask.any():
         return None
 
-    # Clamp to a valid range so fancy-indexing won't out-of-bounds; we'll mask alpha after.
-    safe_cols = np.clip(src_cols, 0, src_w - 1)
-    safe_rows = np.clip(src_rows, 0, src_h - 1)
+    c0c = np.clip(c0, 0, src_w - 1)
+    c1c = np.clip(c1, 0, src_w - 1)
+    r0c = np.clip(r0, 0, src_h - 1)
+    r1c = np.clip(r1, 0, src_h - 1)
 
-    tile = rgba[np.ix_(safe_rows, safe_cols)].copy()  # shape (256, 256, 4)
-    # Zero-out pixels that fell outside the source extent.
+    # Four pre-coloured RGBA corner samples — blend works directly on visible pixels,
+    # transparency included so rain edges feather instead of cliff-edging.
+    tl = rgba[np.ix_(r0c, c0c)].astype(np.float32)
+    tr = rgba[np.ix_(r0c, c1c)].astype(np.float32)
+    bl = rgba[np.ix_(r1c, c0c)].astype(np.float32)
+    br = rgba[np.ix_(r1c, c1c)].astype(np.float32)
+
+    wx = fx[None, :, None]
+    wy = fy[:, None, None]
+    top = tl * (1 - wx) + tr * wx
+    bot = bl * (1 - wx) + br * wx
+    blended = top * (1 - wy) + bot * wy
+    tile = (blended + 0.5).astype(np.uint8)
+
     full_mask = row_mask[:, None] & col_mask[None, :]
     tile[~full_mask] = 0
 
