@@ -37,8 +37,8 @@ export function WeatherTab({
   return (
     <div className="p-4 space-y-5">
       <NowCard current={current} stationName={station.name} />
-      <StatGrid current={current} />
       <ComingDays forecast={forecast} errorMessage={forecastErrorMessage} />
+      <StatGrid current={current} />
       <p className="text-[11px] text-[--color-ink-700]">
         Waarneming {formatHm(current.observed_at)} · KNMI station{" "}
         <span className="font-medium">{station.name}</span>
