@@ -157,6 +157,7 @@ const DailyForecastSchema = z.object({
   wind_direction_deg: z.number().int().nullable(),
   sunrise: z.string().nullable(),
   sunset: z.string().nullable(),
+  source: z.string().nullable().optional(),
 });
 
 export const ForecastResponseSchema = z.object({
