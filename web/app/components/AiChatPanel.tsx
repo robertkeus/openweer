@@ -17,7 +17,15 @@ export function AiChatPanel({ context }: Props) {
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
-  const { messages, pending, error, isStreaming, send, cancel } = useAiChat();
+  const { messages, pending, error, isStreaming, send, cancel, reset } =
+    useAiChat();
+  const hasConversation = messages.length > 0 || pending !== null;
+
+  function clearConversation() {
+    reset();
+    setDraft("");
+    composerRef.current?.focus();
+  }
 
   // Auto-scroll to the bottom whenever new content lands.
   useEffect(() => {
@@ -35,9 +43,24 @@ export function AiChatPanel({ context }: Props) {
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
+        className="relative flex-1 overflow-y-auto px-4 py-3 space-y-3"
         aria-live="polite"
       >
+        {hasConversation ? (
+          <div className="sticky top-0 z-10 -mx-4 -mt-3 mb-1 flex justify-end px-3 pt-2 pb-1 bg-gradient-to-b from-[--color-surface] to-transparent">
+            <button
+              type="button"
+              onClick={clearConversation}
+              aria-label="Wis het gesprek"
+              title="Wis het gesprek"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-[--color-ink-700] hover:text-[--color-ink-900] hover:bg-[--color-ink-50] focus:outline focus:outline-2 focus:outline-[--color-accent-500]"
+            >
+              <ResetIcon className="h-3.5 w-3.5" />
+              <span>Wis gesprek</span>
+            </button>
+          </div>
+        ) : null}
+
         {messages.length === 0 && !pending ? (
           <div className="text-sm text-[--color-ink-700]">
             <p className="mb-3">
@@ -184,6 +207,28 @@ function StopIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" {...props}>
       <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ResetIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path
+        d="M4 12a8 8 0 1 1 2.5 5.8"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M3 5v5h5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
     </svg>
   );
 }

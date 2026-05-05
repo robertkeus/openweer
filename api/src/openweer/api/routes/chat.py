@@ -8,8 +8,10 @@ guarded by the allowlist in `knmi/_security.py`.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Annotated, Literal
 
 import httpx
@@ -18,8 +20,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from openweer.api.dependencies import AppState, get_state
-from openweer.api.routes._chat_prompt import ChatContext, build_system_prompt
+from openweer.api.dependencies import AppState, get_state, latest_radar_forecast_path
+from openweer.api.routes._chat_prompt import (
+    MAJOR_CITIES,
+    ChatContext,
+    ChatRainSample,
+    build_system_prompt,
+    format_cities_rain_context,
+    summarise_city_samples,
+)
+from openweer.forecast.rain_2h import RainNowcast, sample_rain_nowcasts
 from openweer.knmi._security import UrlNotAllowedError, assert_greenpt_url
 
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -68,11 +78,18 @@ async def chat(
             detail="De AI-host is niet toegestaan.",
         )
 
+    cities_block = await _build_cities_block(state, payload.context.language)
+
     body = {
         "model": settings.greenpt_model,
         "stream": True,
         "messages": [
-            {"role": "system", "content": build_system_prompt(payload.context)},
+            {
+                "role": "system",
+                "content": build_system_prompt(
+                    payload.context, cities_block=cities_block
+                ),
+            },
             *(turn.model_dump() for turn in payload.messages),
         ],
     }
@@ -127,6 +144,43 @@ async def chat(
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+async def _build_cities_block(state: AppState, language: str) -> str | None:
+    """Sample the latest radar HDF5 at every major NL city; return a formatted block.
+
+    Off-thread because h5py + reprojection are sync. Any failure (no HDF5 yet,
+    corrupt file, sampling raises) is logged and swallowed — the chat must keep
+    working without the national snapshot.
+    """
+    hdf5_path = latest_radar_forecast_path(state)
+    if hdf5_path is None:
+        return None
+    try:
+        nowcasts = await asyncio.to_thread(_sample_cities, hdf5_path)
+    except Exception as exc:
+        log.warning("chat.cities_snapshot_failed", error=type(exc).__name__)
+        return None
+
+    summaries = []
+    for city, nc in zip(MAJOR_CITIES, nowcasts, strict=True):
+        samples = [
+            ChatRainSample(
+                minutes_ahead=s.minutes_ahead,
+                mm_per_h=s.mm_per_h,
+                valid_at=s.valid_at,
+            )
+            for s in nc.samples
+        ]
+        summaries.append(summarise_city_samples(city.name, samples))
+    return format_cities_rain_context(summaries, language=language) or None
+
+
+def _sample_cities(hdf5_path: Path) -> list[RainNowcast]:
+    return sample_rain_nowcasts(
+        hdf5_path,
+        [(c.lat, c.lon) for c in MAJOR_CITIES],
     )
 
 

@@ -7,8 +7,9 @@ dicts before forwarding to GreenPT.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Iterable
+from typing import Iterable, Sequence
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -16,6 +17,32 @@ from pydantic import BaseModel, Field, field_validator
 # context to the same range the rain endpoint already enforces.
 _LAT_MIN, _LAT_MAX = 50.0, 54.0
 _LON_MIN, _LON_MAX = 3.0, 8.0
+
+
+@dataclass(frozen=True, slots=True)
+class City:
+    """A named (lat, lon) used for the national rain snapshot."""
+
+    name: str
+    lat: float
+    lon: float
+
+
+# Mirror of web/app/lib/locations.ts:KNOWN_LOCATIONS — keep in sync.
+MAJOR_CITIES: tuple[City, ...] = (
+    City("Amsterdam", 52.37, 4.89),
+    City("Rotterdam", 51.92, 4.48),
+    City("Den Haag", 52.07, 4.30),
+    City("Utrecht", 52.09, 5.12),
+    City("Eindhoven", 51.44, 5.48),
+    City("Groningen", 53.22, 6.57),
+    City("Maastricht", 50.85, 5.69),
+    City("Arnhem", 51.98, 5.91),
+    City("Tilburg", 51.55, 5.09),
+    City("Leeuwarden", 53.20, 5.79),
+    City("Middelburg", 51.50, 3.61),
+    City("Enschede", 52.22, 6.89),
+)
 
 
 class ChatRainSample(BaseModel):
@@ -65,8 +92,68 @@ def format_rain_context(samples: Iterable[ChatRainSample]) -> str:
     )
 
 
-def build_system_prompt(ctx: ChatContext) -> str:
-    """The Dutch (or English) system prompt sent on every chat turn."""
+@dataclass(frozen=True, slots=True)
+class CityRainSummary:
+    """Compact rain summary for one city, used by the national snapshot block."""
+
+    name: str
+    peak_mm_per_h: float
+    total_mm: float
+
+
+def summarise_city_samples(
+    name: str,
+    samples: Sequence[ChatRainSample],
+) -> CityRainSummary:
+    """Reduce 2h of 5-minute samples to a peak intensity + total accumulation."""
+    if not samples:
+        return CityRainSummary(name=name, peak_mm_per_h=0.0, total_mm=0.0)
+    peak = max(s.mm_per_h for s in samples)
+    total_mm = sum(s.mm_per_h for s in samples) / 12.0  # 5-min cadence
+    return CityRainSummary(name=name, peak_mm_per_h=peak, total_mm=total_mm)
+
+
+def format_cities_rain_context(
+    rows: Iterable[CityRainSummary],
+    *,
+    language: str = "nl",
+) -> str:
+    """Multi-line per-city block, sorted drier-first so ordering is informative.
+
+    Empty input returns "" so the caller can omit the section entirely.
+    """
+    rows = list(rows)
+    if not rows:
+        return ""
+    rows.sort(key=lambda r: (r.peak_mm_per_h, r.total_mm, r.name))
+    is_en = language == "en"
+    lines = []
+    for r in rows:
+        if r.peak_mm_per_h < 0.1:
+            label = "dry" if is_en else "droog"
+            lines.append(f"- {r.name}: {label}")
+        else:
+            peak_word = "peak" if is_en else "piek"
+            total_word = "total" if is_en else "totaal"
+            unit_h = "mm/h" if is_en else "mm/u"
+            lines.append(
+                f"- {r.name}: {peak_word} {r.peak_mm_per_h:.1f} {unit_h}, "
+                f"{total_word} {r.total_mm:.1f} mm"
+            )
+    return "\n".join(lines)
+
+
+def build_system_prompt(
+    ctx: ChatContext,
+    *,
+    cities_block: str | None = None,
+) -> str:
+    """The Dutch (or English) system prompt sent on every chat turn.
+
+    `cities_block` is an optional pre-formatted multi-line string from
+    `format_cities_rain_context`. When provided, a "national snapshot" section
+    is appended so the model can answer cross-city comparison questions.
+    """
     rain_line = format_rain_context(ctx.samples)
     cursor_line = (
         f"De gebruiker bekijkt momenteel de tijd {ctx.cursor_at.astimezone(timezone.utc).strftime('%H:%M UTC')} op de tijdslider."
@@ -74,6 +161,11 @@ def build_system_prompt(ctx: ChatContext) -> str:
         else "De tijdslider staat op 'nu'."
     )
     if ctx.language == "en":
+        cities_section = (
+            f"\nOther major Dutch cities (next 2h, driest first):\n{cities_block}\n"
+            if cities_block
+            else ""
+        )
         return (
             "You are the OpenWeer assistant — a friendly weather coach for the "
             "Netherlands. Reply in clear English in 1-3 short paragraphs, with "
@@ -82,7 +174,13 @@ def build_system_prompt(ctx: ChatContext) -> str:
             f"Current location: {ctx.location_name} ({ctx.lat:.2f}, {ctx.lon:.2f}).\n"
             f"Forecast (next 2h): {rain_line}\n"
             f"{cursor_line.replace('De gebruiker bekijkt momenteel', 'The user is currently inspecting').replace('op de tijdslider', 'on the timeline').replace('staat op', 'is at')}\n"
+            f"{cities_section}"
         )
+    cities_section_nl = (
+        f"\nAndere grote steden in Nederland (komende 2 uur, droogste eerst):\n{cities_block}\n"
+        if cities_block
+        else ""
+    )
     return (
         "Je bent de OpenWeer-assistent — een vriendelijke weercoach voor "
         "Nederland. Antwoord in helder Nederlands in 1-3 korte alinea's, met "
@@ -91,4 +189,5 @@ def build_system_prompt(ctx: ChatContext) -> str:
         f"Huidige locatie: {ctx.location_name} ({ctx.lat:.2f}, {ctx.lon:.2f}).\n"
         f"Verwachting komende 2 uur: {rain_line}\n"
         f"{cursor_line}\n"
+        f"{cities_section_nl}"
     )

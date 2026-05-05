@@ -7,6 +7,7 @@ each sub-image. Returns a typed result; the API layer just serialises.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -60,6 +61,33 @@ def sample_rain_nowcast(hdf5_path: Path, *, lat: float, lon: float) -> RainNowca
     analysis = sub_images[0].valid_at
     samples = tuple(_sample_one(sub, lat, lon, analysis) for sub in sub_images)
     return RainNowcast(lat=lat, lon=lon, analysis_at=analysis, samples=samples)
+
+
+def sample_rain_nowcasts(
+    hdf5_path: Path,
+    points: Sequence[tuple[float, float]],
+) -> list[RainNowcast]:
+    """Sample multiple (lat, lon) points against a single HDF5 file.
+
+    Opens the radar file once and reuses the parsed sub-images for every point —
+    much cheaper than calling `sample_rain_nowcast` in a loop when the caller
+    needs a national snapshot (e.g. one nowcast per major NL city).
+    """
+    if not points:
+        return []
+    sub_images = read_radar_hdf5(hdf5_path)
+    if not sub_images:
+        raise ValueError(f"No sub-images in {hdf5_path}")
+    analysis = sub_images[0].valid_at
+    return [
+        RainNowcast(
+            lat=lat,
+            lon=lon,
+            analysis_at=analysis,
+            samples=tuple(_sample_one(sub, lat, lon, analysis) for sub in sub_images),
+        )
+        for lat, lon in points
+    ]
 
 
 def _sample_one(sub: RadarSubImage, lat: float, lon: float, analysis_at: datetime) -> RainSample:
