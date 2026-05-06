@@ -49,7 +49,11 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "S", "RUF"]
-ignore = ["S101"]  # asserts in tests are fine
+ignore = [
+    "S101",   # asserts in tests are fine
+    "RUF002", # en/em-dashes in docstrings are intentional Dutch typography
+    "RUF003", # same as above for inline comments
+]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S106"]  # hardcoded passwords in tests are fine

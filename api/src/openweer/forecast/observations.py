@@ -9,14 +9,14 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import h5py
 import numpy as np
 
 # Time origin used by KNMI in the `time` variable.
-_TIME_ORIGIN_S = datetime(1950, 1, 1, tzinfo=timezone.utc).timestamp()
+_TIME_ORIGIN_S = datetime(1950, 1, 1, tzinfo=UTC).timestamp()
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,14 +102,14 @@ def nearest_station_observation(
         mask = lats <= 54.5
 
         distances = np.array(
-            [_haversine_km(lat, lon, la, lo) for la, lo in zip(lats, lons)]
+            [_haversine_km(lat, lon, la, lo) for la, lo in zip(lats, lons, strict=True)]
         )
         # Penalise masked-out indices so they're never closest.
         distances[~mask] = math.inf
         idx = int(np.argmin(distances))
 
         time_s = float(f["time"][0]) if "time" in f else 0.0
-        observed_at = datetime.fromtimestamp(_TIME_ORIGIN_S + time_s, tz=timezone.utc)
+        observed_at = datetime.fromtimestamp(_TIME_ORIGIN_S + time_s, tz=UTC)
 
         station_id = _decode_ascii(f["station"][:], idx)
         station_name = (
@@ -140,4 +140,4 @@ def nearest_station_observation(
 
 def _weather_code(arr: np.ndarray, idx: int) -> int | None:
     v = _maybe_scalar(arr, idx)
-    return None if v is None else int(round(v))
+    return None if v is None else round(v)

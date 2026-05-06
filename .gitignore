@@ -39,3 +39,6 @@ data/
 
 # Local Docker overrides
 docker-compose.override.yml
+
+# Claude Code runtime artifacts
+.claude/scheduled_tasks.lock
