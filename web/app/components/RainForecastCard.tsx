@@ -39,7 +39,9 @@ export function RainForecastCard({
       {errorMessage ? (
         <p className="mt-6 text-sm text-[--color-ink-500]">{errorMessage}</p>
       ) : loading ? (
-        <p className="mt-6 text-sm text-[--color-ink-500]">Voorspelling laden…</p>
+        <p className="mt-6 text-sm text-[--color-ink-500]">
+          Voorspelling laden…
+        </p>
       ) : rain && rain.samples.length ? (
         <>
           <div className="mt-5">

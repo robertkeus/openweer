@@ -46,7 +46,8 @@ export default function Locatie({ loaderData }: Route.ComponentProps) {
             Weer in {location.name}
           </h1>
           <p className="mt-3 text-[--color-ink-700]">
-            Coördinaten: {location.lat.toFixed(2)}°N, {location.lon.toFixed(2)}°O
+            Coördinaten: {location.lat.toFixed(2)}°N, {location.lon.toFixed(2)}
+            °O
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <WeatherNowCard locationName={location.name} rain={rain} />

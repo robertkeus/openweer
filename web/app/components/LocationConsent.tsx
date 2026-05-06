@@ -61,8 +61,8 @@ export function LocationConsent({
             id={descId}
             className="mt-2 text-sm text-[--color-ink-700] leading-relaxed"
           >
-            We gebruiken je coördinaten alleen om de minutenvoorspelling op
-            jouw plek te laten zien. Niets wordt opgeslagen of gedeeld.
+            We gebruiken je coördinaten alleen om de minutenvoorspelling op jouw
+            plek te laten zien. Niets wordt opgeslagen of gedeeld.
           </p>
           {error ? (
             <p
@@ -85,7 +85,11 @@ export function LocationConsent({
             disabled={resolving}
             className="btn-primary inline-flex items-center justify-center gap-2 h-12 rounded-2xl text-base font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
-            {resolving ? <SpinnerIcon /> : <CrosshairIcon className="h-5 w-5" />}
+            {resolving ? (
+              <SpinnerIcon />
+            ) : (
+              <CrosshairIcon className="h-5 w-5" />
+            )}
             {resolving ? "Locatie zoeken…" : "Ja, gebruik mijn locatie"}
           </button>
           <button
@@ -105,13 +109,35 @@ function Illustration(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 80 80" fill="none" {...props}>
       <defs>
-        <radialGradient id="lc-glow" cx="40" cy="44" r="34" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="var(--color-accent-500)" stopOpacity="0.35" />
-          <stop offset="1" stopColor="var(--color-accent-500)" stopOpacity="0" />
+        <radialGradient
+          id="lc-glow"
+          cx="40"
+          cy="44"
+          r="34"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop
+            offset="0"
+            stopColor="var(--color-accent-500)"
+            stopOpacity="0.35"
+          />
+          <stop
+            offset="1"
+            stopColor="var(--color-accent-500)"
+            stopOpacity="0"
+          />
         </radialGradient>
       </defs>
       <circle cx="40" cy="44" r="34" fill="url(#lc-glow)" />
-      <circle cx="40" cy="44" r="22" stroke="var(--color-accent-600)" strokeWidth="1.5" strokeDasharray="2 4" opacity="0.55" />
+      <circle
+        cx="40"
+        cy="44"
+        r="22"
+        stroke="var(--color-accent-600)"
+        strokeWidth="1.5"
+        strokeDasharray="2 4"
+        opacity="0.55"
+      />
       <path
         d="M40 18c-8.8 0-16 7-16 15.6 0 11 16 26.4 16 26.4s16-15.4 16-26.4C56 25 48.8 18 40 18Z"
         fill="var(--color-accent-600)"

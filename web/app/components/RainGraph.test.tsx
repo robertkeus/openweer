@@ -6,7 +6,9 @@ import { RainGraph, RainSummary } from "./RainGraph";
 const sample = (minutes: number, mm: number): RainSample => ({
   minutes_ahead: minutes,
   mm_per_h: mm,
-  valid_at: new Date(Date.parse("2026-05-03T06:30Z") + minutes * 60_000).toISOString(),
+  valid_at: new Date(
+    Date.parse("2026-05-03T06:30Z") + minutes * 60_000,
+  ).toISOString(),
 });
 
 describe("RainGraph", () => {

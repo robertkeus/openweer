@@ -60,7 +60,10 @@ function NowCard({
 }) {
   return (
     <div className="rounded-2xl border border-[--color-border] p-4 flex items-center gap-4 weather-now">
-      <ConditionGlyph kind={current.condition} className="h-14 w-14 flex-none" />
+      <ConditionGlyph
+        kind={current.condition}
+        className="h-14 w-14 flex-none"
+      />
       <div className="flex-1 min-w-0">
         <p className="text-xs uppercase tracking-wider text-[--color-ink-700]">
           Nu in {stationName.split(" ")[0]}
@@ -91,7 +94,9 @@ function StatGrid({ current }: { current: CurrentWeather }) {
     ],
     [
       "Luchtvochtigheid",
-      current.humidity_pct !== null ? `${current.humidity_pct.toFixed(0)}%` : "—",
+      current.humidity_pct !== null
+        ? `${current.humidity_pct.toFixed(0)}%`
+        : "—",
     ],
     [
       "Regen 24u",
@@ -265,15 +270,30 @@ function ConditionGlyph({
   const sunGrad = id("sun");
   const cloudGrad = id("cloud");
   return (
-    <svg viewBox="0 0 64 64" fill="none" className={className} aria-hidden="true">
+    <svg
+      viewBox="0 0 64 64"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
       <defs>
-        <radialGradient id={sunGrad} cx="32" cy="28" r="14" gradientUnits="userSpaceOnUse">
+        <radialGradient
+          id={sunGrad}
+          cx="32"
+          cy="28"
+          r="14"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset="0" stopColor="oklch(0.95 0.14 85)" />
           <stop offset="1" stopColor="var(--color-sun-400)" />
         </radialGradient>
         <linearGradient id={cloudGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="oklch(1 0 0)" stopOpacity="0.95" />
-          <stop offset="1" stopColor="oklch(0.86 0.012 250)" stopOpacity="0.95" />
+          <stop
+            offset="1"
+            stopColor="oklch(0.86 0.012 250)"
+            stopOpacity="0.95"
+          />
         </linearGradient>
       </defs>
 
@@ -294,9 +314,14 @@ function ConditionGlyph({
           </g>
         </>
       )}
-      {(kind === "partly-cloudy" || kind === "cloudy" || kind === "rain" ||
-        kind === "drizzle" || kind === "thunder" || kind === "snow" ||
-        kind === "fog" || kind === "unknown") && (
+      {(kind === "partly-cloudy" ||
+        kind === "cloudy" ||
+        kind === "rain" ||
+        kind === "drizzle" ||
+        kind === "thunder" ||
+        kind === "snow" ||
+        kind === "fog" ||
+        kind === "unknown") && (
         <g
           fill={`url(#${cloudGrad})`}
           stroke="oklch(0.78 0.012 250)"

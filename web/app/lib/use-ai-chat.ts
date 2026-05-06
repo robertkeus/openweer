@@ -59,7 +59,10 @@ export function useAiChat(): UseAiChatResult {
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
-          headers: { "content-type": "application/json", accept: "text/event-stream" },
+          headers: {
+            "content-type": "application/json",
+            accept: "text/event-stream",
+          },
           body: JSON.stringify(body),
           signal: ctrl.signal,
         });

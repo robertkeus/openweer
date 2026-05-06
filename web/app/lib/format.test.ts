@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatMmPerHour,
-  formatRelativeOffset,
-  rainVerdict,
-} from "./format";
+import { formatMmPerHour, formatRelativeOffset, rainVerdict } from "./format";
 
 describe("formatMmPerHour", () => {
   it("uses Dutch comma decimal", () => {

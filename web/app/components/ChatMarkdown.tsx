@@ -134,9 +134,7 @@ function renderInline(input: string): ReactNode[] {
       if (end !== -1) {
         flush();
         nodes.push(
-          <strong key={key++}>
-            {renderInline(input.slice(i + 2, end))}
-          </strong>,
+          <strong key={key++}>{renderInline(input.slice(i + 2, end))}</strong>,
         );
         i = end + 2;
         continue;

@@ -35,9 +35,7 @@ describe("ChatMarkdown", () => {
     const list = container.querySelector("ul.chat-md-list");
     expect(list).toBeTruthy();
     expect(list?.querySelectorAll("li").length).toBe(3);
-    expect(list?.querySelectorAll("li")[2].textContent).toBe(
-      "ga met de fiets",
-    );
+    expect(list?.querySelectorAll("li")[2].textContent).toBe("ga met de fiets");
   });
 
   it("renders ordered lists", () => {

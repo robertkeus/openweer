@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Frame } from "./api";
-import { defaultPlayableFrames, findNowAnchor } from "./frames";
+import { defaultPlayableFrames, findCurrentIndex } from "./frames";
 
 const FRAME_INTERVAL_MS = 500;
 
@@ -21,7 +21,7 @@ export interface RadarTimeline {
 export function useRadarTimeline(allFrames: readonly Frame[]): RadarTimeline {
   const frames = useMemo(() => defaultPlayableFrames(allFrames), [allFrames]);
 
-  const nowIndex = useMemo(() => findNowAnchor(frames), [frames]);
+  const nowIndex = useMemo(() => findCurrentIndex(frames), [frames]);
   const [currentIndex, setCurrentIndex] = useState(nowIndex);
   const [isPlaying, setIsPlaying] = useState(false);
 

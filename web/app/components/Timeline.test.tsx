@@ -110,9 +110,7 @@ describe("Timeline", () => {
         onTogglePlay={() => {}}
       />,
     );
-    expect(
-      screen.getByRole("button", { name: /Pauzeer/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Pauzeer/ })).toBeInTheDocument();
   });
 
   it("renders nothing when there are no frames", () => {
@@ -140,9 +138,7 @@ describe("Timeline", () => {
       />,
     );
     // 06:30 UTC == 08:30 Europe/Amsterdam (CEST in May)
-    const valueText = screen
-      .getByRole("slider")
-      .getAttribute("aria-valuetext");
+    const valueText = screen.getByRole("slider").getAttribute("aria-valuetext");
     expect(valueText).toContain("08:30");
   });
 

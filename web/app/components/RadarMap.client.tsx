@@ -36,8 +36,10 @@ function basemapStyle(isDark: boolean): string {
 }
 
 function isDocumentDark(): boolean {
-  return typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark");
+  return (
+    typeof document !== "undefined" &&
+    document.documentElement.classList.contains("dark")
+  );
 }
 
 const RADAR_MIN_ZOOM = 6;
@@ -160,14 +162,16 @@ export function RadarMap({
   // ---- 2) Add one raster source/layer per frame after the basemap is ready ----
   useEffect(() => {
     if (!mapReady) return;
-    const m = mapRef.current as
-      | {
-          addSource: Function;
-          addLayer: Function;
-          getSource: Function;
-          setPaintProperty: Function;
-        }
-      | null;
+    const m = mapRef.current as {
+      addSource: (id: string, source: object) => unknown;
+      addLayer: (layer: object) => unknown;
+      getSource: (id: string) => unknown;
+      setPaintProperty: (
+        layerId: string,
+        prop: string,
+        value: unknown,
+      ) => unknown;
+    } | null;
     if (!m || !frames.length) return;
 
     frames.forEach((frame, i) => {
@@ -198,7 +202,13 @@ export function RadarMap({
   // ---- 3) On every index change, fade the previous out, the new one in ----
   useEffect(() => {
     if (!mapReady) return;
-    const m = mapRef.current as { setPaintProperty: Function } | null;
+    const m = mapRef.current as {
+      setPaintProperty: (
+        layerId: string,
+        prop: string,
+        value: unknown,
+      ) => unknown;
+    } | null;
     if (!m || !frames.length) return;
     frames.forEach((frame, i) => {
       m.setPaintProperty(
@@ -212,9 +222,9 @@ export function RadarMap({
   // ---- 4) Fly to a new center + drop a marker at the selected location ----
   useEffect(() => {
     if (!mapReady || !center) return;
-    const m = mapRef.current as
-      | { flyTo: (opts: { center: [number, number]; zoom?: number }) => void }
-      | null;
+    const m = mapRef.current as {
+      flyTo: (opts: { center: [number, number]; zoom?: number }) => void;
+    } | null;
     m?.flyTo({ center: [center.lon, center.lat], zoom: 9 });
 
     void (async () => {
@@ -253,12 +263,10 @@ export function RadarMap({
       const nextDark = root.classList.contains("dark");
       if (nextDark === lastDark) return;
       lastDark = nextDark;
-      const m = mapRef.current as
-        | {
-            setStyle: (s: string) => void;
-            once: (ev: string, cb: () => void) => void;
-          }
-        | null;
+      const m = mapRef.current as {
+        setStyle: (s: string) => void;
+        once: (ev: string, cb: () => void) => void;
+      } | null;
       if (!m) return;
       // setStyle wipes sources/layers — flip mapReady so the source-adding
       // effect (#2) re-runs once the new style finishes loading.

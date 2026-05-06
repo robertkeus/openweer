@@ -35,6 +35,9 @@ function colorFor(mm: number): string {
 }
 
 export function RainGraph({ samples, height = 140 }: Props) {
+  // Hook must run unconditionally — keep above any early returns (rules-of-hooks).
+  const [hovered, setHovered] = useState<number | null>(null);
+
   if (!samples.length) return null;
 
   const allDry = samples.every((s) => s.mm_per_h < 0.1);
@@ -67,7 +70,6 @@ export function RainGraph({ samples, height = 140 }: Props) {
   const descId = `rain-graph-desc-${samples[0].valid_at}`;
   const totalMm = (samples.reduce((s, x) => s + x.mm_per_h, 0) / 12).toFixed(1);
 
-  const [hovered, setHovered] = useState<number | null>(null);
   const hoveredSample = hovered !== null ? samples[hovered] : null;
 
   return (
@@ -217,17 +219,37 @@ function SunCloudIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 64 56" fill="none" {...props}>
       <defs>
-        <radialGradient id={haloId} cx="44" cy="18" r="22" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="var(--color-sun-400)" stopOpacity="0.45" />
+        <radialGradient
+          id={haloId}
+          cx="44"
+          cy="18"
+          r="22"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop
+            offset="0"
+            stopColor="var(--color-sun-400)"
+            stopOpacity="0.45"
+          />
           <stop offset="1" stopColor="var(--color-sun-400)" stopOpacity="0" />
         </radialGradient>
-        <radialGradient id={sunId} cx="42" cy="16" r="9" gradientUnits="userSpaceOnUse">
+        <radialGradient
+          id={sunId}
+          cx="42"
+          cy="16"
+          r="9"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset="0" stopColor="oklch(0.95 0.14 85)" />
           <stop offset="1" stopColor="var(--color-sun-400)" />
         </radialGradient>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="oklch(1 0 0)" stopOpacity="0.95" />
-          <stop offset="1" stopColor="oklch(0.86 0.012 250)" stopOpacity="0.95" />
+          <stop
+            offset="1"
+            stopColor="oklch(0.86 0.012 250)"
+            stopOpacity="0.95"
+          />
         </linearGradient>
       </defs>
 
@@ -259,7 +281,12 @@ function SunCloudIcon(props: React.SVGProps<SVGSVGElement>) {
       />
 
       {/* Cumulus body — overlapping lobes give a fluffy, real-cloud silhouette. */}
-      <g fill={`url(#${gradId})`} stroke="oklch(0.78 0.012 250)" strokeWidth="0.8" strokeLinejoin="round">
+      <g
+        fill={`url(#${gradId})`}
+        stroke="oklch(0.78 0.012 250)"
+        strokeWidth="0.8"
+        strokeLinejoin="round"
+      >
         <path d="M12 42c-4.4 0-8-3.4-8-7.6 0-3.7 2.7-6.8 6.4-7.5a9 9 0 0117 0.5 6.5 6.5 0 014 11.6 5.5 5.5 0 01-4.4 2.9 6 6 0 01-4.7 0z" />
       </g>
       {/* Highlight lobes that catch the light from the sun's direction. */}

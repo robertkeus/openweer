@@ -81,31 +81,6 @@ export function findCurrentIndex(playable: readonly Frame[]): number {
   return best;
 }
 
-export function findNowAnchor(playable: readonly Frame[]): number {
-  /**
-   * "Nu" anchor — the boundary between past and future inside the playable
-   * range. We pick the index of the latest `observed` frame: everything
-   * before it is real radar history, everything after it is forecast
-   * (nowcast). With wall-clock-closest you'd land at the rightmost frame
-   * whenever data is stale, hiding the forecast scrub direction.
-   *
-   * Falls back to wall-clock-closest only when no observed frame exists.
-   */
-  if (!playable.length) return 0;
-  let lastObserved = -1;
-  let lastObservedTs = -Infinity;
-  playable.forEach((f, i) => {
-    if (f.kind !== "observed") return;
-    const ts = new Date(f.ts).getTime();
-    if (ts >= lastObservedTs) {
-      lastObservedTs = ts;
-      lastObserved = i;
-    }
-  });
-  if (lastObserved >= 0) return lastObserved;
-  return findCurrentIndex(playable);
-}
-
 function byTs(a: Frame, b: Frame): number {
   return new Date(a.ts).getTime() - new Date(b.ts).getTime();
 }

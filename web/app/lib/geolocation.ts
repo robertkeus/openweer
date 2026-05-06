@@ -38,9 +38,7 @@ export async function getCurrentPosition(
   options: PositionOptions = { timeout: 15000, maximumAge: 60_000 },
 ): Promise<Coords> {
   if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-    throw new GeolocationError(
-      "Je browser ondersteunt geen locatiebepaling.",
-    );
+    throw new GeolocationError("Je browser ondersteunt geen locatiebepaling.");
   }
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(

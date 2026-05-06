@@ -96,12 +96,7 @@ export function Timeline({
             onKeyDown={handleKeyDown}
             sliderRef={sliderRef}
           />
-          <TimeTicks
-            frames={frames}
-            cursorAtNow={
-              typeof nowIndex === "number" && currentIndex === nowIndex
-            }
-          />
+          <TimeTicks frames={frames} />
         </div>
       </div>
     </div>
@@ -193,9 +188,7 @@ function TrackWithBars({
         className="absolute top-0 bottom-0 -translate-x-1/2 pointer-events-none flex flex-col items-center"
         style={{ left: `${cursorPct}%` }}
       >
-        <span className="timeline-cursor-pill">
-          {isAtNow ? "Nu" : cursorLabel}
-        </span>
+        <span className="timeline-cursor-pill">{cursorLabel}</span>
         <span className="mt-0.5 block flex-1 w-[3px] bg-[--color-accent-600] rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.25)]" />
         <span className="block h-2 w-2 -mb-0.5 rounded-full bg-[--color-accent-600] ring-2 ring-[--color-overlay] shadow" />
       </div>
@@ -306,13 +299,7 @@ interface Tick {
 
 const NOW_LABEL_GUARD_MS = 35 * 60 * 1000;
 
-function buildTenMinuteTicks(
-  frames: Frame[],
-  nowMs: number,
-  /** When true the bottom "Nu" tick label is suppressed elsewhere — no
-   * need to guard adjacent hour labels against collision with it. */
-  skipNowGuard: boolean = false,
-): Tick[] {
+function buildTenMinuteTicks(frames: Frame[], nowMs: number): Tick[] {
   if (frames.length < 2) return [];
   const startTs = new Date(frames[0].ts).getTime();
   const endTs = new Date(frames[frames.length - 1].ts).getTime();
@@ -323,10 +310,9 @@ function buildTenMinuteTicks(
   for (let t = first; t <= endTs; t += TEN_MIN_MS) {
     const minute = new Date(t).getMinutes();
     const isNow = Math.abs(t - nowMs) < TEN_MIN_MS / 2;
-    const collidesWithNow =
-      !skipNowGuard &&
-      !isNow &&
-      Math.abs(t - nowMs) < NOW_LABEL_GUARD_MS;
+    // Always render the Nu label, so guard adjacent hour labels against
+    // collision with it.
+    const collidesWithNow = !isNow && Math.abs(t - nowMs) < NOW_LABEL_GUARD_MS;
     ticks.push({
       ts: t,
       label: formatHm(new Date(t).toISOString()),
@@ -339,26 +325,16 @@ function buildTenMinuteTicks(
   return ticks;
 }
 
-function TimeTicks({
-  frames,
-  cursorAtNow,
-}: {
-  frames: Frame[];
-  cursorAtNow: boolean;
-}) {
-  // When the cursor sits on Nu, the bottom "Nu" label is suppressed (the
-  // cursor pill above already says "Nu"). In that case there is no risk
-  // of a Nu/hour-label collision, so we can show all hour labels.
+function TimeTicks({ frames }: { frames: Frame[] }) {
   const ticks = useMemo(
-    () => buildTenMinuteTicks(frames, Date.now(), cursorAtNow),
-    [frames, cursorAtNow],
+    () => buildTenMinuteTicks(frames, Date.now()),
+    [frames],
   );
   if (!ticks.length) return null;
   return (
     <div aria-hidden="true" className="relative h-5 select-none">
       {ticks.map((t) => {
-        const showNuLabel = t.isNow && !cursorAtNow;
-        const showLabel = t.isLabeled || showNuLabel;
+        const showLabel = t.isLabeled || t.isNow;
         return (
           <span
             key={t.ts}

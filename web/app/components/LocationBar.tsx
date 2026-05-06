@@ -30,7 +30,15 @@ interface NominatimResult {
   name?: string;
   osm_id?: number;
   place_id?: number;
-  address?: { state?: string; county?: string; city?: string; town?: string; village?: string; municipality?: string; country?: string };
+  address?: {
+    state?: string;
+    county?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    municipality?: string;
+    country?: string;
+  };
 }
 
 async function searchNominatim(
@@ -54,7 +62,13 @@ async function searchNominatim(
   return data.map((r) => {
     const a = r.address ?? {};
     const name =
-      a.city ?? a.town ?? a.village ?? a.municipality ?? r.name ?? r.display_name?.split(",")[0] ?? "Onbekend";
+      a.city ??
+      a.town ??
+      a.village ??
+      a.municipality ??
+      r.name ??
+      r.display_name?.split(",")[0] ??
+      "Onbekend";
     const detail = a.state ?? a.county ?? "";
     return {
       key: `osm-${r.osm_id ?? r.place_id ?? `${r.lat}-${r.lon}`}`,
@@ -163,7 +177,11 @@ export function LocationBar({ current, onSelect }: Props) {
         <span
           aria-hidden="true"
           className="grid place-items-center h-8 w-8 rounded-xl flex-none"
-          style={{ background: "color-mix(in oklab, var(--color-accent-500) 15%, transparent)", color: "var(--color-accent-600)" }}
+          style={{
+            background:
+              "color-mix(in oklab, var(--color-accent-500) 15%, transparent)",
+            color: "var(--color-accent-600)",
+          }}
         >
           <SearchIcon className="h-4 w-4" />
         </span>
@@ -214,7 +232,10 @@ export function LocationBar({ current, onSelect }: Props) {
           className="glass-card absolute top-full inset-x-0 mt-2 max-h-80 overflow-auto p-1 z-30"
         >
           {suggestions.length === 0 ? (
-            <li role="none" className="px-3 py-3 text-sm text-[--color-ink-700]">
+            <li
+              role="none"
+              className="px-3 py-3 text-sm text-[--color-ink-700]"
+            >
               {searching
                 ? "Zoeken…"
                 : query.trim()

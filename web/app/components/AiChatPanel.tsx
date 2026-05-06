@@ -90,10 +90,10 @@ export function AiChatPanel({ context }: Props) {
         ) : null}
 
         {messages.map((m, i) => (
-          <Bubble key={i} role={m.role} content={m.content} />
+          <Bubble key={i} from={m.role} content={m.content} />
         ))}
         {pending !== null ? (
-          <Bubble role="assistant" content={pending || "…"} streaming />
+          <Bubble from="assistant" content={pending || "…"} streaming />
         ) : null}
         {error ? (
           <p
@@ -164,15 +164,15 @@ export function AiChatPanel({ context }: Props) {
 }
 
 function Bubble({
-  role,
+  from,
   content,
   streaming,
 }: {
-  role: "user" | "assistant";
+  from: "user" | "assistant";
   content: string;
   streaming?: boolean;
 }) {
-  const isUser = role === "user";
+  const isUser = from === "user";
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div

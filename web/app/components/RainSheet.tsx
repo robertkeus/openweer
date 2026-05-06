@@ -32,8 +32,15 @@ interface Props {
   defaultTab?: RainSheetTab;
 }
 
-export function RainSheet({ details, chat, weather, defaultTab = "chat" }: Props) {
-  const [snap, setSnap] = useState<Snap>(defaultTab === "chat" ? "full" : "peek");
+export function RainSheet({
+  details,
+  chat,
+  weather,
+  defaultTab = "chat",
+}: Props) {
+  const [snap, setSnap] = useState<Snap>(
+    defaultTab === "chat" ? "full" : "peek",
+  );
   const [tab, setTab] = useState<RainSheetTab>(defaultTab);
   const [dragOffset, setDragOffset] = useState<number | null>(null);
   const startYRef = useRef(0);
@@ -114,7 +121,8 @@ export function RainSheet({ details, chat, weather, defaultTab = "chat" }: Props
         style={{
           bottom: "var(--timeline-height)",
           height: SNAP_VAR[snap],
-          transform: dragOffset !== null ? `translateY(${dragOffset}px)` : undefined,
+          transform:
+            dragOffset !== null ? `translateY(${dragOffset}px)` : undefined,
           transition:
             dragOffset !== null || reducedMotion
               ? "none"
@@ -138,11 +146,13 @@ export function RainSheet({ details, chat, weather, defaultTab = "chat" }: Props
         </button>
         <TabBar active={tab} onChange={pickTab} />
         <div className="flex-1 overflow-y-auto pb-[max(env(safe-area-inset-bottom,0),16px)]">
-          {tab === "chat"
-            ? chat
-            : tab === "weather"
-              ? weather
-              : <DetailsScroll>{details}</DetailsScroll>}
+          {tab === "chat" ? (
+            chat
+          ) : tab === "weather" ? (
+            weather
+          ) : (
+            <DetailsScroll>{details}</DetailsScroll>
+          )}
         </div>
       </div>
 
@@ -153,11 +163,13 @@ export function RainSheet({ details, chat, weather, defaultTab = "chat" }: Props
       >
         <TabBar active={tab} onChange={pickTab} />
         <div className="flex-1 overflow-y-auto">
-          {tab === "chat"
-            ? chat
-            : tab === "weather"
-              ? weather
-              : <DetailsScroll>{details}</DetailsScroll>}
+          {tab === "chat" ? (
+            chat
+          ) : tab === "weather" ? (
+            weather
+          ) : (
+            <DetailsScroll>{details}</DetailsScroll>
+          )}
         </div>
       </div>
     </>
@@ -247,7 +259,15 @@ function ChatTabIcon(props: React.SVGProps<SVGSVGElement>) {
 function WeatherTabIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" {...props}>
-      <circle cx="9" cy="10" r="3.4" fill="currentColor" fillOpacity="0.18" stroke="currentColor" strokeWidth="1.4" />
+      <circle
+        cx="9"
+        cy="10"
+        r="3.4"
+        fill="currentColor"
+        fillOpacity="0.18"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
       <path
         d="M11 18a4 4 0 010-8 5 5 0 019.4 0.6 3.5 3.5 0 012 6.4A3 3 0 0119 18z"
         fill="currentColor"

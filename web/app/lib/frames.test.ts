@@ -75,8 +75,8 @@ describe("findCurrentIndex", () => {
 
 describe("tileUrlTemplate", () => {
   it("produces a maplibre-compatible XYZ template", () => {
-    expect(tileUrlTemplate(f("20260503T0630Z", "observed", "2026-05-03T06:30Z"))).toBe(
-      "/tiles/20260503T0630Z/{z}/{x}/{y}.png",
-    );
+    expect(
+      tileUrlTemplate(f("20260503T0630Z", "observed", "2026-05-03T06:30Z")),
+    ).toBe("/tiles/20260503T0630Z/{z}/{x}/{y}.png");
   });
 });

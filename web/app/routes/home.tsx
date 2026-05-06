@@ -88,7 +88,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const [rain, setRain] = useState<RainResponse | null>(initialRain);
   const [rainLoading, setRainLoading] = useState(false);
   const [rainErrMsg, setRainErrMsg] = useState<string | undefined>(rainError);
-  const [weather, setWeather] = useState<WeatherResponse | null>(initialWeather);
+  const [weather, setWeather] = useState<WeatherResponse | null>(
+    initialWeather,
+  );
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherErrMsg, setWeatherErrMsg] = useState<string | undefined>(
     weatherError,
@@ -171,7 +173,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       try {
         const data = await api.forecast(lat, lon);
         if (!signal.aborted) setForecast(data);
-      } catch (err) {
+      } catch {
         if (signal.aborted) return;
         setForecastErrMsg("De meerdaagse verwachting is even niet bereikbaar.");
         setForecast(null);
@@ -192,7 +194,13 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     refetchWeather(location.lat, location.lon, ctrl.signal);
     refetchForecast(location.lat, location.lon, ctrl.signal);
     return () => ctrl.abort();
-  }, [location.lat, location.lon, refetchRain, refetchWeather, refetchForecast]);
+  }, [
+    location.lat,
+    location.lon,
+    refetchRain,
+    refetchWeather,
+    refetchForecast,
+  ]);
 
   return (
     <div className="map-shell fixed inset-0 overflow-hidden">

@@ -100,7 +100,10 @@ function VerdictBadge({
 }: {
   verdict: "droog" | "licht" | "matig" | "zwaar";
 }) {
-  const styles: Record<typeof verdict, { bg: string; fg: string; label: string }> = {
+  const styles: Record<
+    typeof verdict,
+    { bg: string; fg: string; label: string }
+  > = {
     droog: {
       bg: "bg-emerald-50 dark:bg-emerald-900/40",
       fg: "text-emerald-700 dark:text-emerald-200",
