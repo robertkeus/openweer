@@ -59,7 +59,9 @@ services:
     restart: unless-stopped
 
   caddy:
-    image: caddy:2.8-alpine
+    build:
+      context: ./caddy
+      dockerfile: Dockerfile
     ports:
       - "80:80"
       # Uncomment in prod for HTTPS:

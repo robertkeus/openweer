@@ -10,6 +10,8 @@
 	servers {
 		trusted_proxies static private_ranges
 	}
+	# Rate-limit module ordering — must come before reverse_proxy.
+	order rate_limit before reverse_proxy
 }
 
 :80 {
@@ -36,8 +38,17 @@
 	}
 
 	# ---- API → FastAPI ----
+	# Rate-limit per client IP (OWASP A01) — generous for normal browser
+	# use but blunts scraper / abuse traffic before it hits FastAPI.
 	@api path /api/*
 	handle @api {
+		rate_limit {
+			zone api_per_ip {
+				key {client_ip}
+				events 120
+				window 1m
+			}
+		}
 		reverse_proxy api:8000 {
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Forwarded-For {remote_host}
