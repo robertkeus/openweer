@@ -1,0 +1,81 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel in-progress runs for the same branch when a new commit lands.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: api · ruff + mypy + pytest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-extras --frozen
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      # mypy strict is configured in pyproject.toml but the codebase has
+      # pre-existing violations (see issue tracker). Run it for visibility,
+      # but don't block PRs until the backlog is cleared.
+      - name: Type-check (mypy, advisory)
+        run: uv run mypy src/
+        continue-on-error: true
+
+      - name: Run tests (pytest)
+        run: uv run pytest
+
+  web:
+    name: web · eslint + tsc + vitest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (eslint)
+        run: npm run lint
+
+      - name: Format check (prettier)
+        run: npm run format:check
+
+      - name: Type-check (tsc)
+        run: npm run typecheck
+
+      - name: Run tests (vitest)
+        run: npm run test
