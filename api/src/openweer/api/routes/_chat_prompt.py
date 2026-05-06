@@ -7,16 +7,13 @@ dicts before forwarding to GreenPT.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Iterable, Sequence
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field, field_validator
 
-# NL bbox — mirrors the radar coverage area; we clamp coords inside the
-# context to the same range the rain endpoint already enforces.
-_LAT_MIN, _LAT_MAX = 50.0, 54.0
-_LON_MIN, _LON_MAX = 3.0, 8.0
+from openweer.api._bbox import NL_LAT_MAX, NL_LAT_MIN, NL_LON_MAX, NL_LON_MIN
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,8 +54,8 @@ class ChatContext(BaseModel):
     """Structured context the user is currently looking at on the map."""
 
     location_name: str = Field(min_length=1, max_length=120)
-    lat: float = Field(ge=_LAT_MIN, le=_LAT_MAX)
-    lon: float = Field(ge=_LON_MIN, le=_LON_MAX)
+    lat: float = Field(ge=NL_LAT_MIN, le=NL_LAT_MAX)
+    lon: float = Field(ge=NL_LON_MIN, le=NL_LON_MAX)
     cursor_at: datetime | None = None
     samples: list[ChatRainSample] = Field(default_factory=list, max_length=60)
     language: str = Field(default="nl", min_length=2, max_length=8)
@@ -84,7 +81,7 @@ def format_rain_context(samples: Iterable[ChatRainSample]) -> str:
     wet_share = wet_count / len(samples)
     if peak.mm_per_h < 0.1:
         return "Het blijft naar verwachting droog de komende 2 uur."
-    peak_local = peak.valid_at.astimezone(timezone.utc).strftime("%H:%M UTC")
+    peak_local = peak.valid_at.astimezone(UTC).strftime("%H:%M UTC")
     return (
         f"Piek {peak.mm_per_h:.1f} mm/u rond {peak_local}; "
         f"totaal ongeveer {total_mm:.1f} mm; "
@@ -155,16 +152,25 @@ def build_system_prompt(
     is appended so the model can answer cross-city comparison questions.
     """
     rain_line = format_rain_context(ctx.samples)
-    cursor_line = (
-        f"De gebruiker bekijkt momenteel de tijd {ctx.cursor_at.astimezone(timezone.utc).strftime('%H:%M UTC')} op de tijdslider."
-        if ctx.cursor_at is not None
-        else "De tijdslider staat op 'nu'."
-    )
+    if ctx.cursor_at is not None:
+        cursor_hm = ctx.cursor_at.astimezone(UTC).strftime("%H:%M UTC")
+        cursor_line = (
+            f"De gebruiker bekijkt momenteel de tijd {cursor_hm} op de tijdslider."
+        )
+    else:
+        cursor_line = "De tijdslider staat op 'nu'."
     if ctx.language == "en":
         cities_section = (
             f"\nOther major Dutch cities (next 2h, driest first):\n{cities_block}\n"
             if cities_block
             else ""
+        )
+        cursor_line_en = (
+            cursor_line.replace(
+                "De gebruiker bekijkt momenteel", "The user is currently inspecting"
+            )
+            .replace("op de tijdslider", "on the timeline")
+            .replace("staat op", "is at")
         )
         return (
             "You are the OpenWeer assistant — a friendly weather coach for the "
@@ -173,7 +179,7 @@ def build_system_prompt(
             "data; if you're unsure, say so.\n\n"
             f"Current location: {ctx.location_name} ({ctx.lat:.2f}, {ctx.lon:.2f}).\n"
             f"Forecast (next 2h): {rain_line}\n"
-            f"{cursor_line.replace('De gebruiker bekijkt momenteel', 'The user is currently inspecting').replace('op de tijdslider', 'on the timeline').replace('staat op', 'is at')}\n"
+            f"{cursor_line_en}\n"
             f"{cities_section}"
         )
     cities_section_nl = (

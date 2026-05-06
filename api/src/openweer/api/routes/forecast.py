@@ -22,13 +22,12 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi import Path as PathParam
 from pydantic import BaseModel, Field
 
-from openweer.knmi._security import UrlNotAllowedError, assert_open_meteo_url
+from openweer.api._bbox import NL_LAT_MAX, NL_LAT_MIN, NL_LON_MAX, NL_LON_MIN
+from openweer.api._errors import upstream_url_guard
+from openweer.knmi._security import assert_open_meteo_url
 
 router = APIRouter(prefix="/api", tags=["forecast"])
 log = structlog.get_logger("openweer.forecast")
-
-_LAT_MIN, _LAT_MAX = 50.0, 54.0
-_LON_MIN, _LON_MAX = 3.0, 8.0
 
 _OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 _HARMONIE_MODEL = "knmi_harmonie_arome_europe"
@@ -79,8 +78,8 @@ _cache: dict[tuple[float, float], tuple[float, ForecastResponse]] = {}
 
 @router.get("/forecast/{lat}/{lon}", response_model=ForecastResponse)
 async def forecast(
-    lat: Annotated[float, PathParam(ge=_LAT_MIN, le=_LAT_MAX, examples=[52.37])],
-    lon: Annotated[float, PathParam(ge=_LON_MIN, le=_LON_MAX, examples=[4.89])],
+    lat: Annotated[float, PathParam(ge=NL_LAT_MIN, le=NL_LAT_MAX, examples=[52.37])],
+    lon: Annotated[float, PathParam(ge=NL_LON_MIN, le=NL_LON_MAX, examples=[4.89])],
 ) -> ForecastResponse:
     rlat = round(lat, 2)
     rlon = round(lon, 2)
@@ -91,13 +90,8 @@ async def forecast(
     if cached and cached[0] > now:
         return cached[1]
 
-    try:
+    with upstream_url_guard("De voorspellingsbron is niet toegestaan."):
         url = assert_open_meteo_url(_OPEN_METEO_URL)
-    except UrlNotAllowedError:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="De voorspellingsbron is niet toegestaan.",
-        )
 
     harmonie_data, ecmwf_data = await asyncio.gather(
         _fetch_model(url, rlat, rlon, _HARMONIE_MODEL, _HARMONIE_DAYS),
@@ -152,7 +146,10 @@ def _merge(
     days: list[DailyForecast] = []
     for ei, day_str in enumerate(ecmwf_times):
         hi = harmonie_by_date.get(day_str)
-        use_harmonie = hi is not None and _at(harmonie_daily, "temperature_2m_max", hi, float) is not None
+        use_harmonie = (
+            hi is not None
+            and _at(harmonie_daily, "temperature_2m_max", hi, float) is not None
+        )
 
         if use_harmonie:
             src_daily = harmonie_daily
@@ -171,7 +168,9 @@ def _merge(
                 temperature_min_c=_at(src_daily, "temperature_2m_min", si, float),
                 precipitation_sum_mm=_at(src_daily, "precipitation_sum", si, float),
                 # HARMONIE is deterministic — always take probability from ECMWF.
-                precipitation_probability_pct=_at(ecmwf_daily, "precipitation_probability_max", ei, int),
+                precipitation_probability_pct=_at(
+                    ecmwf_daily, "precipitation_probability_max", ei, int
+                ),
                 wind_max_kph=_at(src_daily, "windspeed_10m_max", si, float),
                 wind_direction_deg=_at(src_daily, "winddirection_10m_dominant", si, int),
                 sunrise=_at(ecmwf_daily, "sunrise", ei, str),

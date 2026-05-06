@@ -14,7 +14,6 @@ from asgi_lifespan import LifespanManager
 from openweer.api.app import create_app
 from openweer.settings import Settings
 
-
 GREENPT_URL = "https://api.greenpt.ai/v1/chat/completions"
 
 

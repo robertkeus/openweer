@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -36,7 +36,7 @@ def test_format_rain_context_dry() -> None:
         ChatRainSample(
             minutes_ahead=i * 5,
             mm_per_h=0.0,
-            valid_at=datetime(2026, 5, 4, 12, i * 5 % 60, tzinfo=timezone.utc),
+            valid_at=datetime(2026, 5, 4, 12, i * 5 % 60, tzinfo=UTC),
         )
         for i in range(6)
     ]
@@ -49,17 +49,17 @@ def test_format_rain_context_wet_includes_peak_and_total() -> None:
         ChatRainSample(
             minutes_ahead=0,
             mm_per_h=0.0,
-            valid_at=datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc),
+            valid_at=datetime(2026, 5, 4, 12, 0, tzinfo=UTC),
         ),
         ChatRainSample(
             minutes_ahead=30,
             mm_per_h=2.4,
-            valid_at=datetime(2026, 5, 4, 12, 30, tzinfo=timezone.utc),
+            valid_at=datetime(2026, 5, 4, 12, 30, tzinfo=UTC),
         ),
         ChatRainSample(
             minutes_ahead=60,
             mm_per_h=0.5,
-            valid_at=datetime(2026, 5, 4, 13, 0, tzinfo=timezone.utc),
+            valid_at=datetime(2026, 5, 4, 13, 0, tzinfo=UTC),
         ),
     ]
     line = format_rain_context(samples)
@@ -97,7 +97,7 @@ def test_build_system_prompt_unknown_language_falls_back_to_nl() -> None:
 
 def test_build_system_prompt_mentions_cursor_when_set() -> None:
     p = build_system_prompt(
-        _ctx(cursor_at=datetime(2026, 5, 4, 13, 25, tzinfo=timezone.utc))
+        _ctx(cursor_at=datetime(2026, 5, 4, 13, 25, tzinfo=UTC))
     )
     assert "13:25" in p
 
@@ -118,17 +118,17 @@ def test_summarise_city_samples_computes_peak_and_total() -> None:
         ChatRainSample(
             minutes_ahead=0,
             mm_per_h=0.0,
-            valid_at=datetime(2026, 5, 4, 12, 0, tzinfo=timezone.utc),
+            valid_at=datetime(2026, 5, 4, 12, 0, tzinfo=UTC),
         ),
         ChatRainSample(
             minutes_ahead=30,
             mm_per_h=2.4,
-            valid_at=datetime(2026, 5, 4, 12, 30, tzinfo=timezone.utc),
+            valid_at=datetime(2026, 5, 4, 12, 30, tzinfo=UTC),
         ),
         ChatRainSample(
             minutes_ahead=60,
             mm_per_h=0.6,
-            valid_at=datetime(2026, 5, 4, 13, 0, tzinfo=timezone.utc),
+            valid_at=datetime(2026, 5, 4, 13, 0, tzinfo=UTC),
         ),
     ]
     s = summarise_city_samples("Utrecht", samples)

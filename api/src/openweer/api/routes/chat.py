@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from openweer.api._errors import upstream_url_guard
 from openweer.api.dependencies import AppState, get_state, latest_radar_forecast_path
 from openweer.api.routes._chat_prompt import (
     MAJOR_CITIES,
@@ -30,7 +31,7 @@ from openweer.api.routes._chat_prompt import (
     summarise_city_samples,
 )
 from openweer.forecast.rain_2h import RainNowcast, sample_rain_nowcasts
-from openweer.knmi._security import UrlNotAllowedError, assert_greenpt_url
+from openweer.knmi._security import assert_greenpt_url
 
 router = APIRouter(prefix="/api", tags=["chat"])
 log = structlog.get_logger("openweer.chat")
@@ -69,14 +70,9 @@ async def chat(
             detail="De AI-assistent is nog niet geconfigureerd.",
         ) from exc
 
-    try:
+    # Defence in depth: should never trigger because _GREENPT_URL is a constant.
+    with upstream_url_guard("De AI-host is niet toegestaan."):
         upstream_url = assert_greenpt_url(_GREENPT_URL)
-    except UrlNotAllowedError:
-        # Defence in depth: should never trigger because _GREENPT_URL is a constant.
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="De AI-host is niet toegestaan.",
-        )
 
     cities_block = await _build_cities_block(state, payload.context.language)
 
@@ -187,4 +183,4 @@ def _sample_cities(hdf5_path: Path) -> list[RainNowcast]:
 def _sse_error(message: str) -> bytes:
     """Encode a Dutch error as a single SSE `data:` event the frontend renders."""
     payload = json.dumps({"error": message})
-    return f"data: {payload}\n\n".encode("utf-8")
+    return f"data: {payload}\n\n".encode()

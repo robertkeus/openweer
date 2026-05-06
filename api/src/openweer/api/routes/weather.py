@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi import Path as PathParam
 from pydantic import BaseModel
 
+from openweer.api._bbox import NL_LAT_MAX, NL_LAT_MIN, NL_LON_MAX, NL_LON_MIN
 from openweer.api.dependencies import AppState, get_state
 from openweer.forecast.observations import (
     StationObservation,
@@ -18,9 +19,6 @@ from openweer.forecast.observations import (
 )
 
 router = APIRouter(prefix="/api", tags=["weather"])
-
-_LAT_MIN, _LAT_MAX = 50.0, 54.0
-_LON_MIN, _LON_MAX = 3.0, 8.0
 
 ConditionKind = Literal[
     "clear",
@@ -69,8 +67,8 @@ class WeatherResponse(BaseModel):
 @router.get("/weather/{lat}/{lon}", response_model=WeatherResponse)
 async def weather(
     state: Annotated[AppState, Depends(get_state)],
-    lat: Annotated[float, PathParam(ge=_LAT_MIN, le=_LAT_MAX, examples=[52.37])],
-    lon: Annotated[float, PathParam(ge=_LON_MIN, le=_LON_MAX, examples=[4.89])],
+    lat: Annotated[float, PathParam(ge=NL_LAT_MIN, le=NL_LAT_MAX, examples=[52.37])],
+    lon: Annotated[float, PathParam(ge=NL_LON_MIN, le=NL_LON_MAX, examples=[4.89])],
 ) -> WeatherResponse:
     raw_dir = state.settings.data_dir / "raw" / "10-minute-in-situ-meteorological-observations"
     nc_path = await asyncio.to_thread(latest_observation_path, raw_dir)
@@ -96,8 +94,12 @@ def _to_response(obs: StationObservation) -> WeatherResponse:
             observed_at=obs.observed_at,
             temperature_c=obs.temperature_c,
             feels_like_c=_feels_like(obs.temperature_c, obs.wind_speed_mps, obs.humidity_pct),
-            condition=_classify_condition(obs.weather_code, obs.cloud_cover_octas, obs.rainfall_1h_mm),
-            condition_label=_condition_label_nl(obs.weather_code, obs.cloud_cover_octas, obs.rainfall_1h_mm),
+            condition=_classify_condition(
+                obs.weather_code, obs.cloud_cover_octas, obs.rainfall_1h_mm
+            ),
+            condition_label=_condition_label_nl(
+                obs.weather_code, obs.cloud_cover_octas, obs.rainfall_1h_mm
+            ),
             wind_speed_mps=obs.wind_speed_mps,
             wind_speed_bft=_beaufort(obs.wind_speed_mps),
             wind_direction_deg=obs.wind_direction_deg,

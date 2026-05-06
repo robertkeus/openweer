@@ -11,14 +11,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi import Path as PathParam
 from pydantic import BaseModel
 
+from openweer.api._bbox import NL_LAT_MAX, NL_LAT_MIN, NL_LON_MAX, NL_LON_MIN
 from openweer.api.dependencies import AppState, get_state, latest_radar_forecast_path
 from openweer.forecast.rain_2h import RainNowcast, sample_rain_nowcast
 
 router = APIRouter(prefix="/api", tags=["rain"])
-
-# Hard NL bbox guard — rejects any out-of-range coordinate at the edge.
-_LAT_MIN, _LAT_MAX = 50.0, 54.0
-_LON_MIN, _LON_MAX = 3.0, 8.0
 
 
 class RainSampleOut(BaseModel):
@@ -38,8 +35,8 @@ class RainResponse(BaseModel):
 async def rain(
     state: Annotated[AppState, Depends(get_state)],
     response: Response,
-    lat: Annotated[float, PathParam(ge=_LAT_MIN, le=_LAT_MAX, examples=[52.37])],
-    lon: Annotated[float, PathParam(ge=_LON_MIN, le=_LON_MAX, examples=[4.89])],
+    lat: Annotated[float, PathParam(ge=NL_LAT_MIN, le=NL_LAT_MAX, examples=[52.37])],
+    lon: Annotated[float, PathParam(ge=NL_LON_MIN, le=NL_LON_MAX, examples=[4.89])],
 ) -> RainResponse:
     hdf5_path = latest_radar_forecast_path(state)
     if hdf5_path is None:
