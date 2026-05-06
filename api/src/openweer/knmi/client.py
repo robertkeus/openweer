@@ -2,10 +2,14 @@
 
 Authentication: a bare `Authorization: <key>` header (no `Bearer`, no `X-API-Key`).
 All outbound URLs are validated against the SSRF allowlist before dispatch.
+Streamed downloads are verified against `Content-MD5` or `ETag` (OWASP A08).
 """
 
 from __future__ import annotations
 
+import base64
+import binascii
+import hashlib
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -16,11 +20,15 @@ from typing import Any, Self
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
+from openweer._logging import get_logger
 from openweer.knmi._security import assert_download_url, assert_knmi_api_url
 from openweer.knmi.datasets import Dataset
 
 API_BASE_URL = "https://api.dataplatform.knmi.nl/open-data/v1"
 _FILENAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+_ETAG_HEX_RE = re.compile(r"[0-9a-f]{32}")
+
+log = get_logger(__name__)
 
 
 class KnmiClientError(RuntimeError):
@@ -119,13 +127,31 @@ class KnmiClient:
 
         The pre-signed S3 URL must not include our `Authorization` header (it has
         its own signature), so we use a bare `httpx.AsyncClient` for this call.
+
+        Streamed bytes are hashed in-line and compared against `Content-MD5` or
+        `ETag` after the body completes (OWASP A08). On mismatch we raise
+        `KnmiClientError` so the writer's cleanup unlinks the temp file.
         """
         assert_download_url(download_url)
         async with httpx.AsyncClient(timeout=60.0) as bare:
             async with bare.stream("GET", download_url) as resp:
                 resp.raise_for_status()
+                expected_md5_hex = _expected_md5_hex(resp.headers)
+                # md5 is for transport-integrity only, not security.
+                hasher = hashlib.md5(usedforsecurity=False) if expected_md5_hex else None
                 async for chunk in resp.aiter_bytes(chunk_size=64 * 1024):
+                    if hasher is not None:
+                        hasher.update(chunk)
                     yield chunk
+                if hasher is not None and expected_md5_hex is not None:
+                    actual = hasher.hexdigest()
+                    if actual != expected_md5_hex:
+                        raise KnmiClientError(
+                            f"KNMI download integrity check failed: "
+                            f"expected md5={expected_md5_hex}, got md5={actual}"
+                        )
+                elif expected_md5_hex is None:
+                    log.warning("knmi.download.no_integrity_header", url=download_url)
 
 
 def _ok_json(resp: httpx.Response) -> dict[str, Any]:
@@ -138,3 +164,24 @@ def _ok_json(resp: httpx.Response) -> dict[str, Any]:
     if not isinstance(body, dict):
         raise KnmiClientError(f"KNMI response was not a JSON object: {resp.request.url}")
     return body
+
+
+def _expected_md5_hex(headers: httpx.Headers) -> str | None:
+    """Return the expected md5 (lowercase hex) from `Content-MD5` or `ETag`, or None.
+
+    `Content-MD5` per RFC 1864 is base64-encoded; S3 pre-signed-URL responses
+    use `ETag` which equals the lowercase hex md5 for non-multipart objects.
+    Multipart-upload ETags contain a `-` and are skipped.
+    """
+    content_md5 = headers.get("content-md5")
+    if content_md5:
+        try:
+            digest = base64.b64decode(content_md5, validate=True)
+        except (binascii.Error, ValueError):
+            digest = b""
+        if len(digest) == 16:
+            return digest.hex()
+    etag: str = headers.get("etag", "").strip().strip('"').lower()
+    if _ETAG_HEX_RE.fullmatch(etag):
+        return etag
+    return None

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
+
 import httpx
 import pytest
 import respx
@@ -103,3 +106,83 @@ async def test_get_download_url_rejects_response_pointing_outside_allowlist() ->
 def test_create_requires_non_empty_api_key() -> None:
     with pytest.raises(KnmiClientError):
         KnmiClient.create("")
+
+
+_DOWNLOAD_URL = "https://knmi.s3.eu-west-1.amazonaws.com/file?signed=1"
+
+
+@respx.mock
+async def test_stream_download_accepts_matching_content_md5() -> None:
+    payload = b"the quick brown fox" * 1000
+    md5_b64 = base64.b64encode(hashlib.md5(payload, usedforsecurity=False).digest()).decode()
+    respx.get(_DOWNLOAD_URL).mock(
+        return_value=httpx.Response(200, content=payload, headers={"Content-MD5": md5_b64})
+    )
+
+    client = _make_client()
+    received = b"".join([chunk async for chunk in client.stream_download(_DOWNLOAD_URL)])
+    assert received == payload
+
+
+@respx.mock
+async def test_stream_download_rejects_mismatched_content_md5() -> None:
+    payload = b"correct payload"
+    wrong_md5 = base64.b64encode(hashlib.md5(b"different", usedforsecurity=False).digest()).decode()
+    respx.get(_DOWNLOAD_URL).mock(
+        return_value=httpx.Response(200, content=payload, headers={"Content-MD5": wrong_md5})
+    )
+
+    client = _make_client()
+    with pytest.raises(KnmiClientError, match="integrity check failed"):
+        async for _ in client.stream_download(_DOWNLOAD_URL):
+            pass
+
+
+@respx.mock
+async def test_stream_download_accepts_matching_etag_hex() -> None:
+    payload = b"s3-style etag check"
+    etag = hashlib.md5(payload, usedforsecurity=False).hexdigest()
+    respx.get(_DOWNLOAD_URL).mock(
+        return_value=httpx.Response(200, content=payload, headers={"ETag": f'"{etag}"'})
+    )
+
+    client = _make_client()
+    received = b"".join([chunk async for chunk in client.stream_download(_DOWNLOAD_URL)])
+    assert received == payload
+
+
+@respx.mock
+async def test_stream_download_rejects_mismatched_etag() -> None:
+    payload = b"actual"
+    wrong_etag = hashlib.md5(b"expected", usedforsecurity=False).hexdigest()
+    respx.get(_DOWNLOAD_URL).mock(
+        return_value=httpx.Response(200, content=payload, headers={"ETag": f'"{wrong_etag}"'})
+    )
+
+    client = _make_client()
+    with pytest.raises(KnmiClientError, match="integrity check failed"):
+        async for _ in client.stream_download(_DOWNLOAD_URL):
+            pass
+
+
+@respx.mock
+async def test_stream_download_skips_multipart_etag() -> None:
+    payload = b"multipart upload bytes"
+    respx.get(_DOWNLOAD_URL).mock(
+        return_value=httpx.Response(200, content=payload, headers={"ETag": '"abc123-3"'})
+    )
+
+    client = _make_client()
+    # ETag with `-N` suffix (multipart) is not an md5; we skip verification rather than fail.
+    received = b"".join([chunk async for chunk in client.stream_download(_DOWNLOAD_URL)])
+    assert received == payload
+
+
+@respx.mock
+async def test_stream_download_passes_through_when_no_integrity_header() -> None:
+    payload = b"no header at all"
+    respx.get(_DOWNLOAD_URL).mock(return_value=httpx.Response(200, content=payload))
+
+    client = _make_client()
+    received = b"".join([chunk async for chunk in client.stream_download(_DOWNLOAD_URL)])
+    assert received == payload
