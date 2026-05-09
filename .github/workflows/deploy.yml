@@ -1,0 +1,56 @@
+name: deploy
+
+# Manual-only for now (workflow_dispatch). Once you've watched a few deploys
+# and trust them, change to:
+#   on:
+#     workflow_run:
+#       workflows: ["ci"]
+#       types: [completed]
+#       branches: [main]
+# and gate on `if: github.event.workflow_run.conclusion == 'success'`.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy (default: main)"
+        required: false
+        default: "main"
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false  # never abort a deploy mid-flight
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://openweer.nl
+    steps:
+      - name: SSH into VM and trigger restart
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 22
+          script_stop: true
+          # systemctl restart openweer ⇒ unit re-runs git pull + docker compose
+          # up -d --build, all idempotent. The ref input is informational —
+          # the unit always pulls main. To deploy a non-main ref, ssh in
+          # manually and `git checkout <ref>` first.
+          script: |
+            set -euo pipefail
+            echo "Deploy ref: ${{ github.event.inputs.ref }}"
+            sudo systemctl restart openweer
+            # Wait up to 2 min for /api/health to return 200.
+            for i in $(seq 1 24); do
+              if curl -fsS https://openweer.nl/api/health > /dev/null; then
+                echo "Health OK after ${i} attempts"
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "Health check failed after 2 min"
+            sudo journalctl -u openweer --since "2 min ago" --no-pager | tail -50
+            exit 1

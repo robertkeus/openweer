@@ -1,0 +1,28 @@
+[Unit]
+Description=OpenWeer (docker compose stack)
+Documentation=https://github.com/robertkeus/openweer
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/openweer
+User=openweer
+Group=openweer
+
+# Pull latest code, rebuild, start (idempotent — safe to repeat).
+ExecStart=/usr/bin/git -C /opt/openweer pull --ff-only
+ExecStart=/usr/bin/docker compose -f /opt/openweer/docker-compose.yml pull --ignore-pull-failures
+ExecStart=/usr/bin/docker compose -f /opt/openweer/docker-compose.yml up -d --build --remove-orphans
+
+# Stop on `systemctl stop openweer`.
+ExecStop=/usr/bin/docker compose -f /opt/openweer/docker-compose.yml down
+
+TimeoutStartSec=600
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

@@ -1,11 +1,13 @@
 # OpenWeer Caddyfile
-# In dev (docker compose up): exposes http://localhost on port 80, no TLS.
-# In prod: change `:80` to `openweer.nl, www.openweer.nl` and Caddy will
-# auto-provision Let's Encrypt certificates.
+# Host is driven by env: dev defaults to `:80` (no TLS), prod sets
+# OPENWEER_SITE_HOST="openweer.nl, www.openweer.nl" so Caddy auto-issues
+# Let's Encrypt certs. Email goes to OPENWEER_ACME_EMAIL.
 
 {
 	# Disable the admin API in prod — local-only by default.
 	admin off
+	# Let's Encrypt contact (only in prod, dev default is empty).
+	email {$OPENWEER_ACME_EMAIL:}
 	# Sensible defaults for served static files.
 	servers {
 		trusted_proxies static private_ranges
@@ -14,7 +16,7 @@
 	order rate_limit before reverse_proxy
 }
 
-:80 {
+{$OPENWEER_SITE_HOST::80} {
 	# ---- Security headers (OWASP A05) — applied to every response ----
 	header {
 		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"

@@ -64,8 +64,14 @@ services:
       dockerfile: Dockerfile
     ports:
       - "80:80"
-      # Uncomment in prod for HTTPS:
-      # - "443:443"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3 (QUIC)
+    environment:
+      # Dev leaves these empty → Caddyfile falls back to `:80` and no email.
+      # Prod sets OPENWEER_SITE_HOST + OPENWEER_ACME_EMAIL via .env so Caddy
+      # auto-issues Let's Encrypt certs for the real hostnames.
+      OPENWEER_SITE_HOST: ${OPENWEER_SITE_HOST:-}
+      OPENWEER_ACME_EMAIL: ${OPENWEER_ACME_EMAIL:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - openweer-data:/var/openweer:ro
