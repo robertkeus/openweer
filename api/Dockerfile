@@ -26,12 +26,20 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"
 
+# rasterio's wheel bundles GDAL but still dlopens system libexpat.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libexpat1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Drop privileges. Mounted /data is owned by this uid in compose.
 RUN groupadd --system --gid 1001 openweer \
     && useradd --system --uid 1001 --gid openweer --no-create-home openweer
 
 WORKDIR /app
 COPY --from=builder /app /app
+
+# Pre-create /data so docker copies ownership into the named volume on first mount.
+RUN mkdir -p /data && chown openweer:openweer /data
 
 USER openweer
 EXPOSE 8000
