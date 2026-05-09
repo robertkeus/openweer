@@ -66,11 +66,15 @@
 
 	# ---- Everything else → React Router SSR server ----
 	handle {
-		# Reasonable CSP for the SSR'd app: allow MapLibre tiles and the
-		# Inter web font, deny inline-script (RR doesn't need it).
-		# MapLibre instantiates its tile-parser worker from a blob: URL, so
-		# worker-src must allow blob: or the map fails to initialise.
-		header Content-Security-Policy "default-src 'self'; img-src 'self' data: blob: https://tiles.openfreemap.org https://*.amazonaws.com; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://tiles.openfreemap.org; frame-ancestors 'none'; base-uri 'self'"
+		# CSP for the SSR'd app:
+		# - script-src needs 'unsafe-inline' because React Router v7 emits
+		#   inline hydration <script> tags; without it the app never
+		#   hydrates and client components (e.g. the map) never mount.
+		#   Tightening this requires per-request nonces wired through RR.
+		# - worker-src must allow blob: — MapLibre instantiates its
+		#   tile-parser worker from URL.createObjectURL(new Blob([...])).
+		# - img-src allows blob: for MapLibre's canvas-to-image internals.
+		header Content-Security-Policy "default-src 'self'; img-src 'self' data: blob: https://tiles.openfreemap.org https://*.amazonaws.com; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://tiles.openfreemap.org; frame-ancestors 'none'; base-uri 'self'"
 		reverse_proxy web:3000 {
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Forwarded-For {remote_host}
