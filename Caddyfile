@@ -68,7 +68,9 @@
 	handle {
 		# Reasonable CSP for the SSR'd app: allow MapLibre tiles and the
 		# Inter web font, deny inline-script (RR doesn't need it).
-		header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://tiles.openfreemap.org https://*.amazonaws.com; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://tiles.openfreemap.org; frame-ancestors 'none'; base-uri 'self'"
+		# MapLibre instantiates its tile-parser worker from a blob: URL, so
+		# worker-src must allow blob: or the map fails to initialise.
+		header Content-Security-Policy "default-src 'self'; img-src 'self' data: blob: https://tiles.openfreemap.org https://*.amazonaws.com; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://tiles.openfreemap.org; frame-ancestors 'none'; base-uri 'self'"
 		reverse_proxy web:3000 {
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Forwarded-For {remote_host}
