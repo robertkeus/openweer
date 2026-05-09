@@ -12,10 +12,11 @@ import {
   type ReactNode,
 } from "react";
 
-type Snap = "peek" | "half" | "full";
+type Snap = "closed" | "peek" | "half" | "full";
 export type RainSheetTab = "chat" | "weather" | "details";
 
 const SNAP_VAR: Record<Snap, string> = {
+  closed: "0px",
   peek: "var(--sheet-peek)",
   half: "var(--sheet-half)",
   full: "var(--sheet-full)",
@@ -38,9 +39,9 @@ export function RainSheet({
   weather,
   defaultTab = "chat",
 }: Props) {
-  const [snap, setSnap] = useState<Snap>(
-    defaultTab === "chat" ? "full" : "peek",
-  );
+  // Mobile starts collapsed (FAB only). Desktop has its own card so this
+  // only affects narrow viewports. Tapping the FAB opens straight to "full".
+  const [snap, setSnap] = useState<Snap>("closed");
   const [tab, setTab] = useState<RainSheetTab>(defaultTab);
   const [dragOffset, setDragOffset] = useState<number | null>(null);
   const startYRef = useRef(0);
@@ -72,7 +73,7 @@ export function RainSheet({
       const dy = e.clientY - startYRef.current;
       const startSnap = startSnapRef.current;
       let next: Snap = startSnap;
-      const order: Snap[] = ["peek", "half", "full"];
+      const order: Snap[] = ["closed", "peek", "half", "full"];
       const idx = order.indexOf(startSnap);
       if (dy < -60) next = order[Math.min(idx + 1, order.length - 1)];
       else if (dy > 60) next = order[Math.max(idx - 1, 0)];
@@ -83,7 +84,7 @@ export function RainSheet({
   );
 
   const onKeyDown = useCallback((e: React.KeyboardEvent<HTMLButtonElement>) => {
-    const order: Snap[] = ["peek", "half", "full"];
+    const order: Snap[] = ["closed", "peek", "half", "full"];
     if (e.key === "ArrowUp" || e.key === "PageUp") {
       e.preventDefault();
       setSnap((s) => order[Math.min(order.indexOf(s) + 1, order.length - 1)]);
@@ -112,49 +113,81 @@ export function RainSheet({
 
   return (
     <>
-      {/* ---- Mobile / tablet sheet (hidden on lg+) ---- */}
-      <div
-        ref={sheetRef}
-        role="dialog"
-        aria-label="Weer­paneel"
-        className="lg:hidden fixed inset-x-0 z-30 glass-card rounded-b-none rounded-t-2xl will-change-[height,transform] flex flex-col"
-        style={{
-          bottom: "var(--timeline-height)",
-          height: SNAP_VAR[snap],
-          transform:
-            dragOffset !== null ? `translateY(${dragOffset}px)` : undefined,
-          transition:
-            dragOffset !== null || reducedMotion
-              ? "none"
-              : "height 220ms cubic-bezier(0.32,0.72,0,1)",
-        }}
-      >
-        <button
-          type="button"
-          aria-label={`Sleep om uit te klappen — huidige stand: ${snap}`}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          onKeyDown={onKeyDown}
-          className="w-full pt-2 pb-1 flex justify-center cursor-grab active:cursor-grabbing touch-none focus-visible:outline-none"
+      {/* ---- Mobile FAB (visible when sheet is closed) ---- */}
+      {snap === "closed" ? (
+        <div
+          className="lg:hidden fixed right-3 z-30"
+          style={{ bottom: "calc(var(--timeline-height) + 1rem)" }}
         >
-          <span
-            aria-hidden="true"
-            className="block h-1.5 w-10 rounded-full bg-[--color-ink-200]"
-          />
-        </button>
-        <TabBar active={tab} onChange={pickTab} />
-        <div className="flex-1 overflow-y-auto pb-[max(env(safe-area-inset-bottom,0),16px)]">
-          {tab === "chat" ? (
-            chat
-          ) : tab === "weather" ? (
-            weather
-          ) : (
-            <DetailsScroll>{details}</DetailsScroll>
-          )}
+          <button
+            type="button"
+            aria-label="Open weerpaneel"
+            onClick={() => {
+              setTab(defaultTab);
+              setSnap("full");
+            }}
+            className="floating-btn"
+          >
+            <ChatTabIcon className="h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
-      </div>
+      ) : null}
+
+      {/* ---- Mobile / tablet sheet (hidden on lg+ and when closed) ---- */}
+      {snap !== "closed" ? (
+        <div
+          ref={sheetRef}
+          role="dialog"
+          aria-label="Weer­paneel"
+          className="lg:hidden fixed inset-x-0 z-30 glass-card rounded-b-none rounded-t-2xl will-change-[height,transform] flex flex-col"
+          style={{
+            bottom: "var(--timeline-height)",
+            height: SNAP_VAR[snap],
+            transform:
+              dragOffset !== null ? `translateY(${dragOffset}px)` : undefined,
+            transition:
+              dragOffset !== null || reducedMotion
+                ? "none"
+                : "height 220ms cubic-bezier(0.32,0.72,0,1)",
+          }}
+        >
+          <div className="relative">
+            <button
+              type="button"
+              aria-label={`Sleep om uit te klappen — huidige stand: ${snap}`}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
+              onKeyDown={onKeyDown}
+              className="w-full pt-2 pb-1 flex justify-center cursor-grab active:cursor-grabbing touch-none focus-visible:outline-none"
+            >
+              <span
+                aria-hidden="true"
+                className="block h-1.5 w-10 rounded-full bg-[--color-ink-200]"
+              />
+            </button>
+            <button
+              type="button"
+              aria-label="Sluit weerpaneel"
+              onClick={() => setSnap("closed")}
+              className="absolute right-2 top-1.5 grid h-8 w-8 place-items-center rounded-full text-[--color-ink-700] hover:bg-[--color-ink-50] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              <CloseIcon className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+          <TabBar active={tab} onChange={pickTab} />
+          <div className="flex-1 overflow-y-auto pb-[max(env(safe-area-inset-bottom,0),16px)]">
+            {tab === "chat" ? (
+              chat
+            ) : tab === "weather" ? (
+              weather
+            ) : (
+              <DetailsScroll>{details}</DetailsScroll>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {/* ---- Desktop (lg+) bottom-right floating card ---- */}
       <div
@@ -315,6 +348,19 @@ function DetailsTabIcon(props: React.SVGProps<SVGSVGElement>) {
         fillOpacity="0.18"
         stroke="currentColor"
         strokeWidth="1.4"
+      />
+    </svg>
+  );
+}
+
+function CloseIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path
+        d="M6 6l12 12M18 6L6 18"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
       />
     </svg>
   );

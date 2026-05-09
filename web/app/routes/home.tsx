@@ -261,8 +261,9 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         ) : null}
       </div>
 
-      {/* Mobile-only recenter button (desktop relies on the crosshair inside the location bar). */}
-      <div className="lg:hidden pointer-events-none absolute right-3 bottom-[calc(var(--sheet-peek)+var(--timeline-height)+1rem)] z-20">
+      {/* Mobile-only recenter button (desktop relies on the crosshair inside the location bar).
+       * Sits one slot above the chat FAB (~3.75rem button + 0.5rem gap). */}
+      <div className="lg:hidden pointer-events-none absolute right-3 bottom-[calc(var(--timeline-height)+1rem+3.75rem)] z-20">
         <div className="pointer-events-auto">
           <RecenterButton onLocate={setLocation} />
         </div>
