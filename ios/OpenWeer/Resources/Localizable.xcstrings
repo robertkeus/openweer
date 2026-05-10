@@ -10,10 +10,16 @@
     "English" : {
 
     },
+    "Gebruik GPS voor het weer hier" : {
+
+    },
     "Geen gegevens beschikbaar" : {
 
     },
     "Ik heb het actuele weer en de regenverwachting voor jouw locatie en de grote NL-steden bij de hand." : {
+
+    },
+    "Locatie" : {
 
     },
     "location.allow" : {
@@ -84,7 +90,16 @@
         }
       }
     },
+    "Mijn locatie" : {
+
+    },
     "Nederlands" : {
+
+    },
+    "Niets gevonden" : {
+
+    },
+    "Probeer een andere zoekopdracht in Nederland." : {
 
     },
     "push.allow" : {
@@ -156,6 +171,12 @@
       }
     },
     "Regen — komende 2 uur" : {
+
+    },
+    "Resultaten" : {
+
+    },
+    "Steden" : {
 
     },
     "Stel een weervraag" : {
