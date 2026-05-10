@@ -58,9 +58,14 @@ struct MainView: View {
                 collapsedHeight: collapsedSheetHeight,
                 header: {
                     VStack(spacing: 8) {
-                        LocationBar { coord, name in
-                            switchTo(coord: coord, name: name)
-                        }
+                        LocationBar(
+                            onPick: { coord, name in
+                                switchTo(coord: coord, name: name)
+                            },
+                            onUseMyLocation: {
+                                await recenterToUserLocation()
+                            }
+                        )
                         .padding(.horizontal, 16)
                         timelineCard
                             .padding(.horizontal, 16)

@@ -1,12 +1,13 @@
 import SwiftUI
 import CoreLocation
 
-/// Search-and-jump UI shown above the timeline. A tap on the search field
-/// expands a sheet with: text input, debounced Nominatim results, and a row
-/// of preset Dutch cities.
+/// Search-and-jump UI shown above the timeline. Tapping the field opens
+/// a sheet with: a "use my location" action, debounced Nominatim search,
+/// and a grid of preset Dutch cities.
 struct LocationBar: View {
     @Environment(AppState.self) private var appState
     let onPick: (CLLocationCoordinate2D, String) -> Void
+    let onUseMyLocation: () async -> Void
 
     @State private var presented = false
 
@@ -35,12 +36,20 @@ struct LocationBar: View {
         }
         .accessibilityIdentifier("location.search.open")
         .sheet(isPresented: $presented) {
-            LocationSearchSheet(onPick: { coord, name in
-                onPick(coord, name)
-                presented = false
-            })
+            LocationSearchSheet(
+                onPick: { coord, name in
+                    onPick(coord, name)
+                    presented = false
+                },
+                onUseMyLocation: {
+                    Task {
+                        await onUseMyLocation()
+                        presented = false
+                    }
+                }
+            )
             .environment(appState)
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
     }
@@ -50,46 +59,79 @@ private struct LocationSearchSheet: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     let onPick: (CLLocationCoordinate2D, String) -> Void
+    let onUseMyLocation: () -> Void
 
     @State private var query: String = ""
     @State private var results: [NominatimResult] = []
     @State private var searching = false
     @State private var searchTask: Task<Void, Never>?
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 0) {
+        ZStack(alignment: .top) {
+            Color.owSurface.ignoresSafeArea()
+            VStack(spacing: 0) {
+                topBar
                 searchField
-                if !query.isEmpty {
-                    resultList
-                } else {
-                    presetList
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        if query.isEmpty {
+                            useMyLocationButton
+                            cityGrid
+                        } else {
+                            resultsList
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 32)
                 }
             }
-            .background(Color.owSurface)
-            .navigationTitle("Locatie kiezen")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(Color.owInkSecondary)
-                            .font(.system(size: 22))
-                    }
-                    .accessibilityLabel("Sluiten")
-                }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                searchFocused = true
             }
         }
     }
 
+    // MARK: - Top bar
+
+    @ViewBuilder
+    private var topBar: some View {
+        HStack {
+            Text("Locatie")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Color.owInkPrimary)
+            Spacer()
+            Button(action: { dismiss() }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Color.owInkSecondary)
+                    .frame(width: 32, height: 32)
+                    .background(Color.owSurfaceCard)
+                    .clipShape(Circle())
+            }
+            .accessibilityLabel("Sluiten")
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+    }
+
+    // MARK: - Search field
+
     @ViewBuilder
     private var searchField: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.owInkSecondary)
-            TextField("Zoek een plaats in Nederland", text: $query)
+            TextField("Zoek een plaats…", text: $query)
                 .textInputAutocapitalization(.words)
                 .autocorrectionDisabled(true)
+                .submitLabel(.search)
+                .focused($searchFocused)
                 .accessibilityIdentifier("location.search.field")
                 .onChange(of: query) { _, newValue in
                     scheduleSearch(for: newValue)
@@ -98,82 +140,177 @@ private struct LocationSearchSheet: View {
             if searching {
                 ProgressView().scaleEffect(0.7)
             } else if !query.isEmpty {
-                Button(action: { query = ""; results = [] }) {
+                Button {
+                    query = ""
+                    results = []
+                } label: {
                     Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
                         .foregroundStyle(Color.owInkSecondary)
                 }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(Color.owSurfaceCard)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .padding(.horizontal, 16)
-        .padding(.top, 12)
     }
 
+    // MARK: - "Use my location"
+
     @ViewBuilder
-    private var resultList: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                if results.isEmpty && !searching {
-                    Text("Geen resultaten")
-                        .font(.system(size: 14, weight: .medium))
+    private var useMyLocationButton: some View {
+        Button(action: { onUseMyLocation() }) {
+            HStack(spacing: 12) {
+                Image(systemName: "location.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(Color.owAccent)
+                    .clipShape(Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Mijn locatie")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.owInkPrimary)
+                    Text("Gebruik GPS voor het weer hier")
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Color.owInkSecondary)
-                        .padding(.top, 24)
-                } else {
-                    ForEach(results) { r in
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Color.owInkSecondary)
+            }
+            .padding(14)
+            .background(Color.owSurfaceCard)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .accessibilityIdentifier("location.use_mine")
+    }
+
+    // MARK: - City grid
+
+    @ViewBuilder
+    private var cityGrid: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Steden")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Color.owInkSecondary)
+                .textCase(.uppercase)
+                .tracking(0.6)
+                .padding(.leading, 4)
+
+            let cols = [GridItem(.flexible(), spacing: 10),
+                        GridItem(.flexible(), spacing: 10)]
+            LazyVGrid(columns: cols, spacing: 10) {
+                ForEach(KnownLocations.all) { loc in
+                    Button(action: { onPick(loc.coordinate, loc.name) }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "building.2.crop.circle.fill")
+                                .font(.system(size: 22))
+                                .foregroundStyle(Color.owAccent)
+                            Text(loc.name)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Color.owInkPrimary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.owSurfaceCard)
+                        .clipShape(RoundedRectangle(cornerRadius: 12,
+                                                    style: .continuous))
+                    }
+                    .accessibilityIdentifier("location.preset.\(loc.slug)")
+                }
+            }
+        }
+    }
+
+    // MARK: - Search results
+
+    @ViewBuilder
+    private var resultsList: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if results.isEmpty && !searching {
+                emptyResults
+            } else if !results.isEmpty {
+                Text("Resultaten")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Color.owInkSecondary)
+                    .textCase(.uppercase)
+                    .tracking(0.6)
+                    .padding(.leading, 4)
+                    .padding(.top, 4)
+
+                VStack(spacing: 0) {
+                    ForEach(Array(results.enumerated()), id: \.element.id) { idx, r in
                         Button(action: { onPick(r.coordinate, r.shortName) }) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(r.shortName)
+                            HStack(spacing: 12) {
+                                Image(systemName: "mappin.circle.fill")
+                                    .font(.system(size: 22))
+                                    .foregroundStyle(Color.owAccent)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(r.shortName)
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundStyle(Color.owInkPrimary)
+                                        .lineLimit(1)
+                                    Text(secondary(for: r))
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(Color.owInkSecondary)
+                                        .lineLimit(1)
+                                }
+                                Spacer()
+                                Image(systemName: "arrow.up.right.circle")
                                     .font(.system(size: 16, weight: .semibold))
-                                    .foregroundStyle(Color.owInkPrimary)
-                                Text(r.displayName)
-                                    .font(.system(size: 12))
                                     .foregroundStyle(Color.owInkSecondary)
-                                    .lineLimit(1)
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, 14)
                             .padding(.vertical, 12)
                         }
                         .accessibilityIdentifier("location.search.result")
-                        Divider().opacity(0.4).padding(.leading, 16)
+                        if idx < results.count - 1 {
+                            Divider().opacity(0.4).padding(.leading, 50)
+                        }
                     }
                 }
+                .background(Color.owSurfaceCard)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
-            .padding(.top, 12)
         }
     }
 
     @ViewBuilder
-    private var presetList: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Snel naar")
-                .font(.system(size: 13, weight: .semibold))
+    private var emptyResults: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 32, weight: .light))
                 .foregroundStyle(Color.owInkSecondary)
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(KnownLocations.all) { loc in
-                        Button(action: { onPick(loc.coordinate, loc.name) }) {
-                            Text(loc.name)
-                                .font(.system(size: 14, weight: .medium))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .background(Color.owSurfaceCard)
-                                .foregroundStyle(Color.owInkPrimary)
-                                .clipShape(Capsule())
-                        }
-                        .accessibilityIdentifier("location.preset.\(loc.slug)")
-                    }
-                }
-                .padding(.horizontal, 16)
-            }
-            Spacer(minLength: 24)
+                .padding(.top, 24)
+            Text("Niets gevonden")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.owInkPrimary)
+            Text("Probeer een andere zoekopdracht in Nederland.")
+                .font(.system(size: 13))
+                .foregroundStyle(Color.owInkSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
         }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Trim "display_name" to a short locality + region.
+    private func secondary(for r: NominatimResult) -> String {
+        let parts = r.displayName
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+        // Drop the first segment (matches shortName) and the last "Nederland".
+        let middle = parts.dropFirst().filter { !$0.lowercased().contains("nederland") }
+        if middle.isEmpty { return "Nederland" }
+        return middle.prefix(2).joined(separator: " · ")
     }
 
     private func scheduleSearch(for text: String, immediate: Bool = false) {
