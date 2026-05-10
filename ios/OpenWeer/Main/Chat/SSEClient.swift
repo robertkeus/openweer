@@ -1,9 +1,46 @@
 import Foundation
 import CoreLocation
 
-/// Minimal Server-Sent-Events client for /api/chat. Emits OpenAI-compatible
-/// chunk strings (the `data:` payloads). Caller is responsible for stopping
-/// the stream by cancelling the parent Task.
+/// Mirrors the payload shape built by `web/app/lib/ai-chat.ts → buildContext`.
+struct ChatContext: Encodable {
+    let location_name: String
+    let lat: Double
+    let lon: Double
+    let cursor_at: String?
+    let samples: [Sample]
+    let language: String
+    let theme: String
+
+    struct Sample: Encodable {
+        let minutes_ahead: Int
+        let mm_per_h: Double
+        let valid_at: String
+    }
+
+    init(locationName: String,
+         coordinate: CLLocationCoordinate2D,
+         cursorFrame: Frame?,
+         rain: RainResponse?,
+         language: LanguagePreference,
+         isDark: Bool) {
+        self.location_name = locationName
+        // Round to 2 decimals on the wire for privacy (matches web).
+        self.lat = (coordinate.latitude  * 100).rounded() / 100
+        self.lon = (coordinate.longitude * 100).rounded() / 100
+        let isoFmt = ISO8601DateFormatter()
+        self.cursor_at = cursorFrame.map { isoFmt.string(from: $0.ts) }
+        self.samples = (rain?.samples ?? []).map { s in
+            Sample(minutes_ahead: s.minutesAhead,
+                   mm_per_h: s.mmPerHour,
+                   valid_at: isoFmt.string(from: s.validAt))
+        }
+        self.language = language.rawValue
+        self.theme = isDark ? "dark" : "light"
+    }
+}
+
+/// Minimal Server-Sent-Events client for /api/chat. Streams OpenAI-compatible
+/// chunks and emits each `delta.content` token via the callback.
 struct ChatStreamClient {
     let baseURL: URL
 
@@ -16,14 +53,9 @@ struct ChatStreamClient {
         }
     }
 
-    /// Streams assistant message deltas. The closure receives each new token
-    /// (already extracted from the OpenAI-style `choices[0].delta.content`).
-    /// Returns when the server signals `[DONE]` or the task is cancelled.
     func stream(
         messages: [ChatMessage],
-        coordinate: CLLocationCoordinate2D,
-        language: LanguagePreference,
-        locationName: String,
+        context: ChatContext,
         onDelta: @MainActor @Sendable @escaping (String) -> Void
     ) async throws {
         var req = URLRequest(url: baseURL.appendingPathComponent("/api/chat"))
@@ -32,16 +64,19 @@ struct ChatStreamClient {
         req.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         req.timeoutInterval = 60
 
-        let body: [String: Any] = [
-            "messages": messages.map { ["role": $0.role.rawValue, "content": $0.content] },
-            "context": [
-                "lat": (coordinate.latitude * 10000).rounded() / 10000,
-                "lon": (coordinate.longitude * 10000).rounded() / 10000,
-                "language": language.rawValue,
-                "location_name": locationName
-            ]
-        ]
-        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        struct Body: Encodable {
+            struct Msg: Encodable {
+                let role: String
+                let content: String
+            }
+            let messages: [Msg]
+            let context: ChatContext
+        }
+        let body = Body(
+            messages: messages.map { Body.Msg(role: $0.role.rawValue, content: $0.content) },
+            context: context
+        )
+        req.httpBody = try JSONEncoder().encode(body)
 
         let (bytes, response) = try await URLSession.shared.bytes(for: req)
         guard let http = response as? HTTPURLResponse else { throw APIError.nonHTTPResponse }

@@ -3,6 +3,7 @@ import CoreLocation
 
 struct AiChatPanel: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 
     @State private var messages: [ChatMessage] = []
@@ -41,7 +42,7 @@ struct AiChatPanel: View {
     @ViewBuilder
     private var emptyState: some View {
         VStack(spacing: 18) {
-            Spacer()
+            Spacer(minLength: 12)
             Image(systemName: "sparkles")
                 .font(.system(size: 48, weight: .light))
                 .foregroundStyle(Color.owAccent)
@@ -54,36 +55,30 @@ struct AiChatPanel: View {
                 .foregroundStyle(Color.owInkSecondary)
                 .padding(.horizontal, 32)
             VStack(spacing: 8) {
-                ForEach(suggestionPrompts, id: \.self) { p in
-                    Button(action: { sendPrompt(p) }) {
-                        Text(p)
-                            .font(.system(size: 14, weight: .medium))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(Color.owSurfaceCard)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .foregroundStyle(Color.owInkPrimary)
+                ForEach(ChatShortcuts.chips) { chip in
+                    Button(action: { sendPrompt(chip.prompt) }) {
+                        HStack(spacing: 12) {
+                            Text(chip.emoji)
+                                .font(.system(size: 22))
+                            Text(chip.label)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(Color.owInkPrimary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .lineLimit(2)
+                            Image(systemName: "arrow.up.right.circle")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color.owInkSecondary)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(Color.owSurfaceCard)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
+                    .accessibilityIdentifier("chat.shortcut.\(chip.label.prefix(20))")
                 }
             }
             .padding(.horizontal, 16)
-            Spacer()
-        }
-    }
-
-    private var suggestionPrompts: [String] {
-        switch appState.language {
-        case .nl: return [
-            "Gaat het de komende twee uur regenen?",
-            "Heb ik een paraplu nodig vanmiddag?",
-            "Wat is het weer in Rotterdam?"
-        ]
-        case .en: return [
-            "Will it rain in the next two hours?",
-            "Do I need an umbrella this afternoon?",
-            "What's the weather in Rotterdam?"
-        ]
+            Spacer(minLength: 12)
         }
     }
 
@@ -172,17 +167,25 @@ struct AiChatPanel: View {
         isStreaming = true
 
         let conversation = messages.dropLast()
-        let coord = appState.coordinate
-        let lang = appState.language
-        let locName = appState.locationName
+        let cursorFrame: Frame? = {
+            let frames = appState.frames
+            guard !frames.isEmpty else { return nil }
+            return frames[max(0, min(frames.count - 1, appState.selectedFrameIndex))]
+        }()
+        let context = ChatContext(
+            locationName: appState.locationName,
+            coordinate: appState.coordinate,
+            cursorFrame: cursorFrame,
+            rain: appState.rain,
+            language: appState.language,
+            isDark: colorScheme == .dark
+        )
 
         streamingTask = Task {
             do {
                 try await ChatStreamClient().stream(
                     messages: Array(conversation),
-                    coordinate: coord,
-                    language: lang,
-                    locationName: locName
+                    context: context
                 ) { delta in
                     if let i = messages.firstIndex(where: { $0.id == assistantId }) {
                         messages[i].content += delta
