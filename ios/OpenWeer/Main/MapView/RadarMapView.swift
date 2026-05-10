@@ -7,6 +7,10 @@ struct RadarMapView: UIViewRepresentable {
     let frame: Frame?
     let basemap: BasemapStyle
     let tileBaseURL: URL
+    /// Height (pt) at the bottom of the view that's covered by the bottom
+    /// sheet. The map applies this as `contentInset` so `setCenter` aims at
+    /// the visible area instead of the geometric center.
+    let bottomObscuredInset: CGFloat
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -16,6 +20,9 @@ struct RadarMapView: UIViewRepresentable {
         map.logoView.isHidden = false
         map.attributionButton.isHidden = false
         map.compassView.isHidden = false
+        map.automaticallyAdjustsContentInset = false
+        map.contentInset = UIEdgeInsets(top: 0, left: 0,
+                                        bottom: bottomObscuredInset, right: 0)
         map.setCenter(coordinate, zoomLevel: 8, animated: false)
         map.minimumZoomLevel = 6
         map.maximumZoomLevel = 11
@@ -33,7 +40,15 @@ struct RadarMapView: UIViewRepresentable {
         } else {
             context.coordinator.applyFrame(frame, baseURL: tileBaseURL)
         }
-        if !context.coordinator.didCenter {
+        let newInsets = UIEdgeInsets(top: 0, left: 0,
+                                     bottom: bottomObscuredInset, right: 0)
+        if map.contentInset != newInsets {
+            map.contentInset = newInsets
+            // Re-aim at the active coordinate so it ends up at the new
+            // visible center rather than wherever the prior inset left it.
+            map.setCenter(coordinate, animated: true)
+            context.coordinator.didCenter = true
+        } else if !context.coordinator.didCenter {
             map.setCenter(coordinate, zoomLevel: 8, animated: false)
             context.coordinator.didCenter = true
         } else if !areClose(map.centerCoordinate, coordinate) {

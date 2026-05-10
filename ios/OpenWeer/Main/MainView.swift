@@ -18,17 +18,19 @@ struct MainView: View {
         @Bindable var state = appState
         ZStack(alignment: .top) {
             GeometryReader { geo in
+                let sheetH = currentSheetHeight(in: geo)
                 ZStack {
                     RadarMapView(
                         coordinate: state.coordinate,
                         frame: currentFrame,
                         basemap: BasemapStyle.resolve(for: colorScheme),
-                        tileBaseURL: apiBaseURL()
+                        tileBaseURL: apiBaseURL(),
+                        bottomObscuredInset: sheetH
                     )
                     .ignoresSafeArea()
                     LocationDotMarker()
                         .position(x: geo.size.width / 2,
-                                  y: visibleMapCenterY(in: geo))
+                                  y: (geo.size.height - sheetH) / 2)
                         .allowsHitTesting(false)
                 }
             }
@@ -87,19 +89,16 @@ struct MainView: View {
         }
     }
 
-    /// Vertical center of the map area that's visible above the bottom sheet
-    /// at its current detent. Keeps the marker in the visible area as the
-    /// user resizes the sheet.
-    private func visibleMapCenterY(in geo: GeometryProxy) -> CGFloat {
+    /// Sheet height (pt) at the current detent. The map uses this as a
+    /// bottom contentInset so `setCenter` lands the coord above the sheet,
+    /// and the marker is positioned at the matching visible center.
+    private func currentSheetHeight(in geo: GeometryProxy) -> CGFloat {
         let total = geo.size.height
-        let frac: CGFloat
         switch detent {
-        case .collapsed: frac = collapsedSheetHeight / total
-        case .medium:    frac = 0.55
-        case .expanded:  frac = 0.92
+        case .collapsed: return collapsedSheetHeight
+        case .medium:    return total * 0.55
+        case .expanded:  return total * 0.92
         }
-        let visibleHeight = total * (1 - frac)
-        return visibleHeight / 2
     }
 
     private var currentFrame: Frame? {
