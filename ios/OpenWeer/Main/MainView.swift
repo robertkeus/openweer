@@ -11,8 +11,8 @@ struct MainView: View {
     @State private var chatPresented = false
     @State private var locationService = LocationService.shared
 
-    /// Drag-handle (28) + timeline card (~108 with padding) ≈ 140
-    private let collapsedSheetHeight: CGFloat = 140
+    /// Drag-handle (28) + search bar (~46 with padding) + timeline card (~108) ≈ 192
+    private let collapsedSheetHeight: CGFloat = 192
 
     var body: some View {
         @Bindable var state = appState
@@ -55,9 +55,15 @@ struct MainView: View {
                 detent: $detent,
                 collapsedHeight: collapsedSheetHeight,
                 header: {
-                    timelineCard
+                    VStack(spacing: 8) {
+                        LocationBar { coord, name in
+                            switchTo(coord: coord, name: name)
+                        }
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 4)
+                        timelineCard
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 4)
+                    }
                 },
                 bodyContent: { sheetBody }
             )
@@ -241,6 +247,13 @@ struct MainView: View {
                 appState.locationName = locationService.lastPlaceName ?? "Mijn locatie"
             }
         }
+    }
+
+    /// Jump the map to an explicit coordinate (search result, preset).
+    private func switchTo(coord: CLLocationCoordinate2D, name: String) {
+        appState.coordinate = coord
+        appState.locationName = name
+        Task { await loadAllData() }
     }
 
     /// Recenter button: ask the user (if needed), fetch a fresh fix, update
