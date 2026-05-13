@@ -17,6 +17,8 @@ const SITE_DESCRIPTION =
 
 export const links: Route.LinksFunction = () => [
   { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+  { rel: "apple-touch-icon", href: "/icon-192.png" },
+  { rel: "manifest", href: "/manifest.webmanifest" },
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
     rel: "preconnect",
