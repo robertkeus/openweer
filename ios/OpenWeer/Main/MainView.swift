@@ -22,6 +22,7 @@ struct MainView: View {
                 ZStack {
                     RadarMapView(
                         coordinate: state.coordinate,
+                        frames: state.frames,
                         frame: currentFrame,
                         basemap: BasemapStyle.resolve(for: colorScheme),
                         tileBaseURL: apiBaseURL(),
