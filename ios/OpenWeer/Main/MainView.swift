@@ -10,9 +10,11 @@ struct MainView: View {
     @State private var detent: SheetDetent = .collapsed
     @State private var chatPresented = false
     @State private var locationService = LocationService.shared
+    @State private var pendingPanTask: Task<Void, Never>?
 
-    /// Drag-handle (28) + search bar (~46 with padding) + timeline card (~108) ≈ 192
-    private let collapsedSheetHeight: CGFloat = 192
+    /// Drag-handle (28) + search bar (~46) + timeline card (~108) +
+    /// rain card (~222, incl. graph + legend + padding) ≈ 414
+    private let collapsedSheetHeight: CGFloat = 414
 
     var body: some View {
         @Bindable var state = appState
@@ -26,7 +28,8 @@ struct MainView: View {
                         frame: currentFrame,
                         basemap: BasemapStyle.resolve(for: colorScheme),
                         tileBaseURL: apiBaseURL(),
-                        bottomObscuredInset: sheetH
+                        bottomObscuredInset: sheetH,
+                        onUserCenterChanged: { coord in handleMapPan(to: coord) }
                     )
                     .ignoresSafeArea()
                     LocationDotMarker()
@@ -69,6 +72,8 @@ struct MainView: View {
                         )
                         .padding(.horizontal, 16)
                         timelineCard
+                            .padding(.horizontal, 16)
+                        rainCard
                             .padding(.horizontal, 16)
                             .padding(.bottom, 4)
                     }
@@ -120,7 +125,6 @@ struct MainView: View {
             VStack(alignment: .leading, spacing: 12) {
                 WeatherNowChip(locationName: state.locationName, weather: state.weather)
                     .padding(.top, 8)
-                rainCard
                 if let weather = state.weather {
                     WeatherNowCard(response: weather)
                 }
@@ -256,14 +260,40 @@ struct MainView: View {
 
     /// Jump the map to an explicit coordinate (search result, preset).
     private func switchTo(coord: CLLocationCoordinate2D, name: String) {
+        pendingPanTask?.cancel()
+        pendingPanTask = nil
         appState.coordinate = coord
         appState.locationName = name
         Task { await loadAllData() }
     }
 
+    /// User-driven pan/zoom settled — adopt the new center as the active
+    /// location, debounced so a continuous gesture only fires one fetch.
+    private func handleMapPan(to coord: CLLocationCoordinate2D) {
+        pendingPanTask?.cancel()
+        pendingPanTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            if Task.isCancelled { return }
+            appState.coordinate = coord
+            appState.locationName = "Locatie zoeken…"
+            async let label = locationService.resolvePlaceName(for: coord)
+            await loadAllData()
+            let resolved = await label
+            if Task.isCancelled { return }
+            if let name = resolved {
+                appState.locationName = name
+            } else {
+                appState.locationName = String(format: "%.3f, %.3f",
+                                               coord.latitude, coord.longitude)
+            }
+        }
+    }
+
     /// Recenter button: ask the user (if needed), fetch a fresh fix, update
     /// the map. If permission denied or fix fails, fall back to Amsterdam.
     private func recenterToUserLocation() async {
+        pendingPanTask?.cancel()
+        pendingPanTask = nil
         let status = locationService.authorizationStatus
         if status == .notDetermined {
             locationService.requestPermission()
