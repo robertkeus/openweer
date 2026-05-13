@@ -43,9 +43,14 @@ MAJOR_CITIES: tuple[City, ...] = (
 
 
 class ChatRainSample(BaseModel):
-    """One bar of the 2-hour rain forecast (matches the frontend RainSample)."""
+    """One sample of the rain forecast.
 
-    minutes_ahead: int = Field(ge=-30, le=240)
+    Range covers the radar nowcast (-30 → +120 min, 5-min cadence) plus the
+    HARMONIE-AROME hourly extension out to +24 h, so `minutes_ahead` can be
+    up to ~1500 (25 h, slack for clock skew).
+    """
+
+    minutes_ahead: int = Field(ge=-30, le=1500)
     mm_per_h: float = Field(ge=0.0, le=200.0)
     valid_at: datetime
 
@@ -57,7 +62,10 @@ class ChatContext(BaseModel):
     lat: float = Field(ge=NL_LAT_MIN, le=NL_LAT_MAX)
     lon: float = Field(ge=NL_LON_MIN, le=NL_LON_MAX)
     cursor_at: datetime | None = None
-    samples: list[ChatRainSample] = Field(default_factory=list, max_length=60)
+    # Nowcast (24 × 5min = 24) + observed tail (up to ~12) + harmonie hourly
+    # extension out to +24h gives ~150 samples in the wild. 200 is comfortable
+    # headroom and still bounded for SSRF / DoS sanity.
+    samples: list[ChatRainSample] = Field(default_factory=list, max_length=200)
     language: str = Field(default="nl", min_length=2, max_length=8)
     theme: str = Field(default="light")
 
