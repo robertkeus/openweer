@@ -76,11 +76,11 @@ export function Timeline({
       role="group"
       aria-label="Regenradar tijdlijn"
     >
-      <div className="flex items-stretch gap-3">
+      <div className="flex items-stretch gap-2 sm:gap-3">
         <button
           type="button"
           onClick={onTogglePlay}
-          className="btn-primary timeline-play-btn inline-grid place-items-center h-12 w-12 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 flex-none self-center"
+          className="btn-primary timeline-play-btn inline-grid place-items-center h-10 w-10 sm:h-12 sm:w-12 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 flex-none self-center"
           aria-pressed={isPlaying}
           aria-label={isPlaying ? "Pauzeer" : "Speel af"}
         >

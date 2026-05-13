@@ -24,6 +24,7 @@ import { WeatherNowCard } from "~/components/WeatherNowCard";
 import { WeatherTab } from "~/components/WeatherTab";
 import { buildContext } from "~/lib/ai-chat";
 import { DEFAULT_LOCATION } from "~/lib/locations";
+import { getStoredLocation } from "~/lib/location-store";
 import { useGeolocation } from "~/lib/use-geolocation";
 import { useLiveFrames } from "~/lib/use-live-frames";
 import { useRadarTimeline } from "~/lib/use-radar-timeline";
@@ -122,6 +123,17 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     !consentDismissed &&
     location.lat === DEFAULT_LOCATION.lat &&
     location.lon === DEFAULT_LOCATION.lon;
+
+  // Hydrate a previously-accepted location from localStorage. Runs after
+  // first paint to avoid SSR mismatches — see lib/theme.ts for the same
+  // pattern. The downstream `useEffect` already refetches rain/weather/
+  // forecast whenever `location` changes, so we don't need to do that here.
+  useEffect(() => {
+    const stored = getStoredLocation();
+    if (!stored) return;
+    setLocation({ name: stored.name, lat: stored.lat, lon: stored.lon });
+    setConsentDismissed(true);
+  }, []);
 
   const refetchRain = useCallback(
     async (lat: number, lon: number, signal: AbortSignal) => {

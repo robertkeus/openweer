@@ -1,0 +1,241 @@
+{
+  "sourceLanguage" : "nl",
+  "strings" : {
+    "/" : {
+
+    },
+    "8-daagse verwachting" : {
+
+    },
+    "English" : {
+
+    },
+    "Gebruik GPS voor het weer hier" : {
+
+    },
+    "Geen gegevens beschikbaar" : {
+
+    },
+    "Ik heb het actuele weer en de regenverwachting voor jouw locatie en de grote NL-steden bij de hand." : {
+
+    },
+    "Locatie" : {
+
+    },
+    "location.allow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow location"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Locatie toestaan"
+          }
+        }
+      }
+    },
+    "location.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So we can find the nearest KNMI station and predict rain for your exact spot."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zo kunnen we het dichtstbijzijnde KNMI-weerstation vinden en de regen voor jouw plek nauwkeurig voorspellen."
+          }
+        }
+      }
+    },
+    "location.skip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overslaan"
+          }
+        }
+      }
+    },
+    "location.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share your location"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Locatie delen"
+          }
+        }
+      }
+    },
+    "Mijn locatie" : {
+
+    },
+    "Nederlands" : {
+
+    },
+    "Niets gevonden" : {
+
+    },
+    "Probeer een andere zoekopdracht in Nederland." : {
+
+    },
+    "push.allow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable notifications"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meldingen aanzetten"
+          }
+        }
+      }
+    },
+    "push.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We notify you up to 30 minutes before rain reaches you."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We waarschuwen je tot 30 minuten voordat het bij jou gaat regenen."
+          }
+        }
+      }
+    },
+    "push.skip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not now"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niet nu"
+          }
+        }
+      }
+    },
+    "push.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rain alerts"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regenmeldingen"
+          }
+        }
+      }
+    },
+    "Regen — komende 2 uur" : {
+
+    },
+    "Resultaten" : {
+
+    },
+    "Steden" : {
+
+    },
+    "Stel een weervraag" : {
+
+    },
+    "voelt als %@" : {
+
+    },
+    "welcome.cta" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Get started"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aan de slag"
+          }
+        }
+      }
+    },
+    "welcome.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear and open. Powered by KNMI open data."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Helder en open. Aangedreven door KNMI open data."
+          }
+        }
+      }
+    },
+    "welcome.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The weather for the Netherlands"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het weer voor Nederland"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

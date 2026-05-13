@@ -5,6 +5,7 @@ import {
   isInNetherlands,
   type Coords,
 } from "./geolocation";
+import { setStoredLocation } from "./location-store";
 
 export interface ResolvedLocation extends Coords {
   name: string;
@@ -96,6 +97,7 @@ export function useGeolocation(
         lat: pos.lat,
         lon: pos.lon,
       };
+      setStoredLocation(resolved);
       startTransition(() => onResolved(resolved));
       return resolved;
     } catch (e) {
