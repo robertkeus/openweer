@@ -41,10 +41,10 @@ export function HorizonButton({ value, onChange }: Props) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Voorspelling-horizon: ${value} uur. Klik om aan te passen.`}
+        aria-label={`Voorspelling-horizon: +${value} uur. Klik om aan te passen.`}
         className="btn-primary inline-grid place-items-center h-12 w-12 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 text-sm font-semibold tabular-nums"
       >
-        {value}u
+        +{value}u
       </button>
       {open ? (
         <ul
