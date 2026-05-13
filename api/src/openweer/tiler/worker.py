@@ -99,7 +99,7 @@ def build_default_worker(
     return TilerWorker(
         ingest_storage=ingest,
         pipeline=pipeline,
-        datasets=(get_dataset("radar_forecast"),),
+        datasets=(get_dataset("radar_forecast"), get_dataset("harmonie")),
         poll_interval_s=poll_interval_s,
     )
 

@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Frame } from "./api";
-import { defaultPlayableFrames, findCurrentIndex } from "./frames";
+import {
+  DEFAULT_FORECAST_HORIZON_HOURS,
+  type ForecastHorizonHours,
+  defaultPlayableFrames,
+  findCurrentIndex,
+} from "./frames";
 
 const FRAME_INTERVAL_MS = 500;
 
@@ -18,8 +23,14 @@ export interface RadarTimeline {
  * Owns the slider state + animation loop. The map, slider, and time chip
  * all read from the same source of truth.
  */
-export function useRadarTimeline(allFrames: readonly Frame[]): RadarTimeline {
-  const frames = useMemo(() => defaultPlayableFrames(allFrames), [allFrames]);
+export function useRadarTimeline(
+  allFrames: readonly Frame[],
+  horizonHours: ForecastHorizonHours = DEFAULT_FORECAST_HORIZON_HOURS,
+): RadarTimeline {
+  const frames = useMemo(
+    () => defaultPlayableFrames(allFrames, horizonHours),
+    [allFrames, horizonHours],
+  );
 
   const nowIndex = useMemo(() => findCurrentIndex(frames), [frames]);
   const [currentIndex, setCurrentIndex] = useState(nowIndex);

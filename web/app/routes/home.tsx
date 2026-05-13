@@ -23,6 +23,10 @@ import { Timeline } from "~/components/Timeline";
 import { WeatherNowCard } from "~/components/WeatherNowCard";
 import { WeatherTab } from "~/components/WeatherTab";
 import { buildContext } from "~/lib/ai-chat";
+import {
+  DEFAULT_FORECAST_HORIZON_HOURS,
+  type ForecastHorizonHours,
+} from "~/lib/frames";
 import { DEFAULT_LOCATION } from "~/lib/locations";
 import { getStoredLocation } from "~/lib/location-store";
 import { useGeolocation } from "~/lib/use-geolocation";
@@ -105,7 +109,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   const [consentDismissed, setConsentDismissed] = useState(false);
 
   const liveFrames = useLiveFrames(frames);
-  const timeline = useRadarTimeline(liveFrames);
+  const [horizonHours, setHorizonHours] = useState<ForecastHorizonHours>(
+    DEFAULT_FORECAST_HORIZON_HOURS,
+  );
+  const timeline = useRadarTimeline(liveFrames, horizonHours);
   const { resolved: resolvedTheme } = useTheme();
   const chatContext = buildContext({
     location,
@@ -332,6 +339,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           nowIndex={timeline.nowIndex}
           isPlaying={timeline.isPlaying}
           rainSamples={rain?.samples}
+          horizonHours={horizonHours}
+          onHorizonChange={setHorizonHours}
           onSeek={timeline.seek}
           onTogglePlay={timeline.togglePlay}
         />

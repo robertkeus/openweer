@@ -50,3 +50,13 @@ def latest_radar_forecast_path(state: AppState) -> Path | None:
         return None
     path = state.ingest.raw_path(dataset, manifest.filename)
     return path if path.exists() else None
+
+
+def latest_harmonie_tar_path(state: AppState) -> Path | None:
+    """Return the path to the newest ingested HARMONIE tar, if any."""
+    dataset = get_dataset("harmonie")
+    manifest = state.ingest.read_manifest(dataset)
+    if manifest is None:
+        return None
+    path = state.ingest.raw_path(dataset, manifest.filename)
+    return path if path.exists() else None

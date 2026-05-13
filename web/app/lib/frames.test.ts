@@ -32,13 +32,23 @@ describe("partitionFrames", () => {
 });
 
 describe("defaultPlayableFrames", () => {
-  it("includes observed + nowcast + hourly within the +4h window", () => {
+  it("defaults to a +2h horizon (radar nowcast only — hourly frames are clipped)", () => {
     const frames = [
       f("o", "observed", "2026-05-03T05:55Z"),
       f("n", "nowcast", "2026-05-03T06:00Z"),
       f("h", "hourly", "2026-05-03T09:00Z"),
     ];
     const playable = defaultPlayableFrames(frames);
+    expect(playable.map((x) => x.kind)).toEqual(["observed", "nowcast"]);
+  });
+
+  it("admits hourly frames inside a wider horizon when one is passed", () => {
+    const frames = [
+      f("o", "observed", "2026-05-03T05:55Z"),
+      f("n", "nowcast", "2026-05-03T06:00Z"),
+      f("h", "hourly", "2026-05-03T09:00Z"),
+    ];
+    const playable = defaultPlayableFrames(frames, 6);
     expect(playable.map((x) => x.kind)).toEqual([
       "observed",
       "nowcast",
@@ -46,13 +56,13 @@ describe("defaultPlayableFrames", () => {
     ]);
   });
 
-  it("clips hourly frames beyond +4h from the latest observation", () => {
+  it("clips hourly frames beyond the requested horizon", () => {
     const frames = [
       f("o", "observed", "2026-05-03T05:55Z"),
-      f("h1", "hourly", "2026-05-03T08:00Z"), // ~2h after — in window
-      f("h2", "hourly", "2026-05-03T11:00Z"), // ~5h after — clipped
+      f("h1", "hourly", "2026-05-03T07:30Z"), // +1h35m — in window at +3h
+      f("h2", "hourly", "2026-05-03T11:00Z"), // +5h — clipped at +3h
     ];
-    const playable = defaultPlayableFrames(frames);
+    const playable = defaultPlayableFrames(frames, 3);
     expect(playable.map((x) => x.id)).toEqual(["o", "h1"]);
   });
 });

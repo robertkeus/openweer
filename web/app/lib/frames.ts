@@ -28,15 +28,17 @@ export function partitionFrames(frames: readonly Frame[]) {
 
 /** Past observations to retain on the slider (in milliseconds). */
 const HISTORY_WINDOW_MS = 2 * 60 * 60 * 1000; // 2h
-/**
- * Forecast horizon to retain on the slider. KNMI's radar nowcast caps at
- * 2h, so today the slider effectively goes to "now + 2h"; the extra cap
- * lets longer-horizon hourly forecast frames flow in automatically when a
- * future ingest pipeline starts producing them.
- */
-const FORECAST_WINDOW_MS = 4 * 60 * 60 * 1000; // 4h
 
-export function defaultPlayableFrames(frames: readonly Frame[]): Frame[] {
+/** User-selectable forecast horizons. +2h is the radar-only nowcast horizon;
+ *  longer values bring in HARMONIE hourly forecast frames. */
+export const FORECAST_HORIZON_HOURS = [2, 3, 6, 8, 12, 24] as const;
+export type ForecastHorizonHours = (typeof FORECAST_HORIZON_HOURS)[number];
+export const DEFAULT_FORECAST_HORIZON_HOURS: ForecastHorizonHours = 2;
+
+export function defaultPlayableFrames(
+  frames: readonly Frame[],
+  forecastHours: ForecastHorizonHours = DEFAULT_FORECAST_HORIZON_HOURS,
+): Frame[] {
   /**
    * Auto-loop range: a rolling window of past observed history plus
    * forward nowcast (and hourly forecast tail when present). Sorted
@@ -57,7 +59,7 @@ export function defaultPlayableFrames(frames: readonly Frame[]): Frame[] {
     ? new Date(lastObserved.ts).getTime()
     : new Date(all[all.length - 1].ts).getTime();
   const minTs = anchorMs - HISTORY_WINDOW_MS;
-  const maxTs = anchorMs + FORECAST_WINDOW_MS;
+  const maxTs = anchorMs + forecastHours * 60 * 60 * 1000;
 
   return all.filter((f) => {
     const t = new Date(f.ts).getTime();

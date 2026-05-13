@@ -1,4 +1,9 @@
-"""GET /api/rain/{lat}/{lon} — 2-hour minute-by-minute rain nowcast."""
+"""GET /api/rain/{lat}/{lon} — minute-by-minute rain at a point.
+
+Combines the 2 h radar nowcast (5-min cadence) with hourly HARMONIE-AROME
+samples for everything beyond the nowcast horizon, fanned onto 10-min slots
+so the slider's bar graph stays uniformly dense.
+"""
 
 from __future__ import annotations
 
@@ -11,9 +16,22 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi import Path as PathParam
 from pydantic import BaseModel
 
+from openweer._logging import get_logger
 from openweer.api._bbox import NL_LAT_MAX, NL_LAT_MIN, NL_LON_MAX, NL_LON_MIN
-from openweer.api.dependencies import AppState, get_state, latest_radar_forecast_path
+from openweer.api.dependencies import (
+    AppState,
+    get_state,
+    latest_harmonie_tar_path,
+    latest_radar_forecast_path,
+)
 from openweer.forecast.rain_2h import RainNowcast, sample_rain_nowcast
+from openweer.forecast.rain_harmonie import (
+    expand_to_10min_slots,
+    sample_harmonie_at_point,
+)
+from openweer.tiler.pipeline import HARMONIE_FORECAST_HOURS
+
+log = get_logger(__name__)
 
 router = APIRouter(prefix="/api", tags=["rain"])
 
@@ -45,24 +63,62 @@ async def rain(
             detail="No radar_forecast file ingested yet.",
         )
 
-    nowcast = await asyncio.to_thread(_sample, hdf5_path, lat, lon)
+    nowcast = await asyncio.to_thread(_sample_nowcast, hdf5_path, lat, lon)
+
+    samples: list[RainSampleOut] = [
+        RainSampleOut(
+            minutes_ahead=s.minutes_ahead,
+            mm_per_h=s.mm_per_h,
+            valid_at=s.valid_at,
+        )
+        for s in nowcast.samples
+    ]
+
+    # Best-effort HARMONIE extension: if a tar is on disk, sample the user's
+    # point at every forecast hour past the nowcast tail. Any failure here
+    # falls back to nowcast-only — don't make the radar endpoint depend on
+    # HARMONIE availability.
+    tar_path = latest_harmonie_tar_path(state)
+    if tar_path is not None:
+        try:
+            hourly = await asyncio.to_thread(
+                sample_harmonie_at_point,
+                tar_path,
+                lat=lat,
+                lon=lon,
+                analysis_at=nowcast.analysis_at,
+                forecast_hours=HARMONIE_FORECAST_HOURS,
+            )
+            nowcast_end_min = max(
+                (s.minutes_ahead for s in nowcast.samples), default=0
+            )
+            # Keep only HARMONIE samples that land past the radar nowcast end.
+            for slot in expand_to_10min_slots(hourly):
+                if slot.minutes_ahead <= nowcast_end_min:
+                    continue
+                samples.append(
+                    RainSampleOut(
+                        minutes_ahead=slot.minutes_ahead,
+                        mm_per_h=slot.mm_per_h,
+                        valid_at=slot.valid_at,
+                    )
+                )
+        except Exception:
+            # Keep endpoint resilient if HARMONIE read fails for any reason
+            # (corrupt tar, missing band, etc).
+            log.exception("rain.harmonie_sample_failed")
+
+    samples.sort(key=lambda s: s.minutes_ahead)
     response.headers["Cache-Control"] = "public, max-age=60"
     return RainResponse(
         lat=nowcast.lat,
         lon=nowcast.lon,
         analysis_at=nowcast.analysis_at,
-        samples=[
-            RainSampleOut(
-                minutes_ahead=s.minutes_ahead,
-                mm_per_h=s.mm_per_h,
-                valid_at=s.valid_at,
-            )
-            for s in nowcast.samples
-        ],
+        samples=samples,
     )
 
 
-def _sample(hdf5_path: Path, lat: float, lon: float) -> RainNowcast:
+def _sample_nowcast(hdf5_path: Path, lat: float, lon: float) -> RainNowcast:
     # h5py I/O + reprojection are sync; offload to a thread to keep the
     # FastAPI event loop snappy under load.
     return sample_rain_nowcast(hdf5_path, lat=lat, lon=lon)

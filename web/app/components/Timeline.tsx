@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Frame, RainSample } from "~/lib/api";
+import type { ForecastHorizonHours } from "~/lib/frames";
 import { formatHm, formatRelativeOffset } from "~/lib/format";
+import { HorizonButton } from "./HorizonButton";
 
 interface Props {
   frames: Frame[];
@@ -10,14 +12,18 @@ interface Props {
   isPlaying: boolean;
   /** Point-rain forecast samples for the current location (5-min cadence). */
   rainSamples?: readonly RainSample[];
+  /** Current forecast horizon (in hours past "Nu") + setter. When provided,
+   *  a round button next to the play control opens a small picker. */
+  horizonHours?: ForecastHorizonHours;
+  onHorizonChange?: (next: ForecastHorizonHours) => void;
   onSeek: (index: number) => void;
   onTogglePlay: () => void;
 }
 
 const FRAME_LABELS: Record<Frame["kind"], string> = {
   observed: "waarneming",
-  nowcast: "voorspelling (5 min)",
-  hourly: "voorspelling (uur)",
+  nowcast: "voorspelling (radar)",
+  hourly: "voorspelling (HARMONIE-model)",
 };
 
 const TEN_MIN_MS = 10 * 60 * 1000;
@@ -28,6 +34,8 @@ export function Timeline({
   nowIndex,
   isPlaying,
   rainSamples,
+  horizonHours,
+  onHorizonChange,
   onSeek,
   onTogglePlay,
 }: Props) {
@@ -98,6 +106,9 @@ export function Timeline({
           />
           <TimeTicks frames={frames} />
         </div>
+        {horizonHours !== undefined && onHorizonChange ? (
+          <HorizonButton value={horizonHours} onChange={onHorizonChange} />
+        ) : null}
       </div>
     </div>
   );
@@ -153,8 +164,13 @@ function TrackWithBars({
             style={{
               height: `${b.heightPct}%`,
               minHeight: "3px",
-              background: b.color,
-              opacity: b.dimmed ? 0.35 : 1,
+              // Hatched bars (HARMONIE) get a diagonal stripe overlay so the
+              // viewer reads them as a different forecast source even at
+              // small sizes where the opacity drop alone is subtle.
+              background: b.hatched
+                ? `repeating-linear-gradient(45deg, ${b.color} 0 3px, color-mix(in srgb, ${b.color} 60%, transparent) 3px 5px)`
+                : b.color,
+              opacity: b.opacity,
             }}
           />
         ))}
@@ -217,13 +233,20 @@ interface IntensityBar {
   key: string;
   heightPct: number;
   color: string;
-  dimmed: boolean;
+  /** Visual weight: 1 = radar (full saturation), 0.55 = HARMONIE model
+   *  (faded so you can tell at a glance that the right portion is a
+   *  different, lower-resolution source), 0.3 = no data. */
+  opacity: number;
+  /** Hatched fill — used to mark HARMONIE-model bars as a different texture
+   *  beyond the visual saturation difference. */
+  hatched: boolean;
 }
 
 /**
  * Build per-frame intensity bars sized by the frame's nearest 10-minute
- * rain bucket. Frames outside the nowcast sample range render as dimmed
- * minimal bars (we don't have point-rain data for past observations).
+ * rain bucket. Radar-nowcast bars are fully saturated; HARMONIE-model bars
+ * carry a hatched overlay + reduced opacity so the user can read the two
+ * sources apart at a glance.
  */
 function buildIntensityBars(
   frames: Frame[],
@@ -240,11 +263,13 @@ function buildIntensityBars(
     const heightPct = hasData
       ? Math.max(6, (Math.min(intensity, yMax) / yMax) * 100)
       : 6;
+    const isHourly = f.kind === "hourly";
     return {
       key: f.id,
       heightPct,
       color: hasData ? colorFor(intensity) : "var(--color-ink-200)",
-      dimmed: !hasData,
+      opacity: !hasData ? 0.3 : isHourly ? 0.55 : 1,
+      hatched: hasData && isHourly,
     };
   });
 }
@@ -299,6 +324,18 @@ interface Tick {
 
 const NOW_LABEL_GUARD_MS = 35 * 60 * 1000;
 
+const HOUR_MS = 60 * 60 * 1000;
+
+/** Hour step between labeled ticks. Stretching to many hours collapses the
+ *  labels visually; thin them out so they stay readable. */
+function labelStepHours(spanMs: number): number {
+  const hours = spanMs / HOUR_MS;
+  if (hours <= 6) return 1;
+  if (hours <= 12) return 2;
+  if (hours <= 18) return 3;
+  return 6;
+}
+
 function buildTenMinuteTicks(frames: Frame[], nowMs: number): Tick[] {
   if (frames.length < 2) return [];
   const startTs = new Date(frames[0].ts).getTime();
@@ -306,20 +343,24 @@ function buildTenMinuteTicks(frames: Frame[], nowMs: number): Tick[] {
   const span = endTs - startTs;
   if (span <= 0) return [];
   const first = Math.ceil(startTs / TEN_MIN_MS) * TEN_MIN_MS;
+  const stepHours = labelStepHours(span);
+  // Anchor the labelled-hour grid on a multiple of `stepHours` so labels land
+  // on tidy clock positions (00, 03, 06… for stepHours=3).
   const ticks: Tick[] = [];
   for (let t = first; t <= endTs; t += TEN_MIN_MS) {
-    const minute = new Date(t).getMinutes();
+    const d = new Date(t);
+    const minute = d.getMinutes();
+    const hour = d.getHours();
     const isNow = Math.abs(t - nowMs) < TEN_MIN_MS / 2;
-    // Always render the Nu label, so guard adjacent hour labels against
-    // collision with it.
     const collidesWithNow = !isNow && Math.abs(t - nowMs) < NOW_LABEL_GUARD_MS;
+    const isLabelHour = minute === 0 && hour % stepHours === 0;
     ticks.push({
       ts: t,
-      label: formatHm(new Date(t).toISOString()),
+      label: formatHm(d.toISOString()),
       pct: ((t - startTs) / span) * 100,
       isNow,
       isMajor: minute % 30 === 0,
-      isLabeled: minute === 0 && !collidesWithNow,
+      isLabeled: isLabelHour && !collidesWithNow,
     });
   }
   return ticks;

@@ -19,8 +19,8 @@ import os
 import shutil
 import tempfile
 from collections.abc import Iterable, Iterator
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass, field, replace
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -30,6 +30,7 @@ from rasterio.warp import Resampling, calculate_default_transform, reproject
 
 from openweer._logging import get_logger
 from openweer.tiler.colormap import apply_rain_colormap
+from openweer.tiler.harmonie_grib import read_harmonie_tar
 from openweer.tiler.manifest import Frame, FrameKind, ManifestStore
 from openweer.tiler.radar_hdf5 import RadarSubImage, read_radar_hdf5
 
@@ -41,6 +42,24 @@ DEFAULT_ZOOMS: tuple[int, ...] = (6, 7, 8, 9, 10)
 TILE_SIZE: int = 256
 WEB_MERCATOR = CRS.from_epsg(3857)
 
+# Forecast hours of KNMI HARMONIE total precipitation to read from the tarball.
+# We always read a range wider than strictly needed because HARMONIE model runs
+# every 3 h: depending on how stale the latest run is vs the latest radar, the
+# "useful" forecast hours that land *after* the nowcast horizon move around.
+# Manifest dedup in `_plan_harmonie_tar` discards any HARMONIE frame whose
+# valid_at is already covered by an observed/nowcast entry, so emitting a
+# slightly-too-wide range is cheap and self-correcting.
+HARMONIE_FORECAST_HOURS: tuple[int, ...] = tuple(range(3, 25))
+HARMONIE_CADENCE_MINUTES: int = 10
+# Each HARMONIE hourly forecast is fanned out into N 10-min sub-frames covering
+# the hour ending at the forecast valid time, all sharing the same rain field
+# (HARMONIE only resolves hourly averages — we don't synthesize new physics).
+# This keeps the slider's cadence uniform at 10 min throughout, matching the
+# radar nowcast portion, so cursor + time-tick labels stay aligned.
+HARMONIE_SLOT_OFFSETS_MIN: tuple[int, ...] = (-50, -40, -30, -20, -10, 0)
+_HDF5_SUFFIXES: frozenset[str] = frozenset({".h5", ".hdf5"})
+_HARMONIE_TAR_SUFFIXES: frozenset[str] = frozenset({".tar"})
+
 
 @dataclass(slots=True)
 class FramePlan:
@@ -50,6 +69,11 @@ class FramePlan:
     frame_id: str
     kind: FrameKind
     cadence_minutes: int
+    # When set, skip the heavy reproject/colormap/tile-write step and instead
+    # symlink this frame's tile dir to another frame's. Used for HARMONIE slot
+    # fan-out: 6 slot-frames per forecast hour all share the same rain map, so
+    # we render the canonical once and symlink the other 5.
+    clone_from: str | None = None
 
 
 @dataclass(slots=True)
@@ -70,15 +94,22 @@ class RadarTilePipeline:
         self.tiles_dir = self.tiles_dir.resolve()
         self.staging_dir = self.staging_dir.resolve()
 
-    def render_file(self, hdf5_path: Path) -> list[Frame]:
-        sub_images = read_radar_hdf5(hdf5_path)
-        if not sub_images:
-            log.warning("tiler.no_sub_images", path=str(hdf5_path))
+    def render_file(self, source_path: Path) -> list[Frame]:
+        suffix = source_path.suffix.lower()
+        if suffix in _HDF5_SUFFIXES:
+            plans = self._plan_radar_hdf5(source_path)
+        elif suffix in _HARMONIE_TAR_SUFFIXES:
+            plans = self._plan_harmonie_tar(source_path)
+        else:
+            log.warning("tiler.unknown_format", path=str(source_path), suffix=suffix)
             return []
 
-        analysis_ts = sub_images[0].valid_at
-        plans = list(self._plan_frames(sub_images, analysis_ts))
+        if not plans:
+            log.warning("tiler.no_sub_images", path=str(source_path))
+            return []
+
         new_frames: list[Frame] = []
+        pending: list[Frame] = []
         for plan in plans:
             try:
                 frame = self._render_one(plan)
@@ -86,17 +117,64 @@ class RadarTilePipeline:
                 log.exception("tiler.render_failed", frame_id=plan.frame_id)
                 continue
             new_frames.append(frame)
-        if new_frames:
-            self.manifest.upsert(new_frames)
+            pending.append(frame)
+            # Upsert in small batches so the frontend sees new frames trickle
+            # in during long HARMONIE renders rather than waiting minutes for
+            # the whole run to finish.
+            if len(pending) >= 6:
+                self.manifest.upsert(pending)
+                pending.clear()
+        if pending:
+            self.manifest.upsert(pending)
         log.info(
             "tiler.file_done",
-            path=str(hdf5_path),
+            path=str(source_path),
             frames=len(new_frames),
-            analysis_ts=analysis_ts.isoformat(),
         )
         return new_frames
 
     # ---- planning ----
+
+    def _plan_radar_hdf5(self, path: Path) -> list[FramePlan]:
+        sub_images = read_radar_hdf5(path)
+        if not sub_images:
+            return []
+        analysis_ts = sub_images[0].valid_at
+        return list(self._plan_frames(sub_images, analysis_ts))
+
+    def _plan_harmonie_tar(self, path: Path) -> list[FramePlan]:
+        sub_images = read_harmonie_tar(path, forecast_hours=HARMONIE_FORECAST_HOURS)
+        # Skip any HARMONIE frame whose timestamp is already covered by a
+        # higher-fidelity observed or nowcast frame. The radar nowcast is the
+        # ground truth out to +2 h; HARMONIE is only useful past that horizon.
+        existing_radar_ids = {
+            f.id for f in self.manifest.read().frames if f.kind in ("observed", "nowcast")
+        }
+        plans: list[FramePlan] = []
+        for sub in sub_images:
+            # Within one hour, the 6 slot-frames share the same rain field;
+            # render the first surviving slot, then point the rest at it.
+            canonical_id: str | None = None
+            for offset_min in HARMONIE_SLOT_OFFSETS_MIN:
+                slot_ts = sub.valid_at + timedelta(minutes=offset_min)
+                frame_id = slot_ts.strftime("%Y%m%dT%H%M") + "Z"
+                if frame_id in existing_radar_ids:
+                    continue
+                slot_sub = replace(
+                    sub, valid_at=slot_ts, name=f"{sub.name}_slot{offset_min:+03d}m"
+                )
+                plans.append(
+                    FramePlan(
+                        sub_image=slot_sub,
+                        frame_id=frame_id,
+                        kind="hourly",
+                        cadence_minutes=HARMONIE_CADENCE_MINUTES,
+                        clone_from=canonical_id,
+                    )
+                )
+                if canonical_id is None:
+                    canonical_id = frame_id
+        return plans
 
     def _plan_frames(
         self, sub_images: Iterable[RadarSubImage], analysis_ts: datetime
@@ -122,6 +200,20 @@ class RadarTilePipeline:
 
     def _render_one(self, plan: FramePlan) -> Frame:
         sub = plan.sub_image
+        if plan.clone_from is not None:
+            self._symlink_clone(plan)
+        else:
+            self._render_tiles(plan)
+        return Frame(
+            id=plan.frame_id,
+            ts=sub.valid_at,
+            kind=plan.kind,
+            cadence_minutes=plan.cadence_minutes,
+            max_zoom=max(self.zoom_levels),
+        )
+
+    def _render_tiles(self, plan: FramePlan) -> None:
+        sub = plan.sub_image
         self.staging_dir.mkdir(parents=True, exist_ok=True)
         self.tiles_dir.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(
@@ -134,16 +226,34 @@ class RadarTilePipeline:
             for z in self.zoom_levels:
                 _write_zoom(rgba, dst_transform, dst_bounds, z, staging_root, self.bbox)
             target = self.tiles_dir / plan.frame_id
-            if target.exists():
-                shutil.rmtree(target)
+            if target.exists() or target.is_symlink():
+                if target.is_symlink() or target.is_file():
+                    target.unlink()
+                else:
+                    shutil.rmtree(target)
             os.replace(staging_root, target)
-        return Frame(
-            id=plan.frame_id,
-            ts=sub.valid_at,
-            kind=plan.kind,
-            cadence_minutes=plan.cadence_minutes,
-            max_zoom=max(self.zoom_levels),
-        )
+
+    def _symlink_clone(self, plan: FramePlan) -> None:
+        """Symlink this frame's tile dir to an already-rendered canonical hour.
+
+        Cheap atomic swap: create the symlink in staging, then `os.replace`
+        it onto the target. Same-volume; safe against concurrent readers.
+        """
+        assert plan.clone_from is not None
+        canonical = self.tiles_dir / plan.clone_from
+        if not canonical.exists():
+            # Canonical wasn't written (rare race / failed render); fall back
+            # to a real render so we never produce a dangling symlink.
+            self._render_tiles(plan)
+            return
+        target = self.tiles_dir / plan.frame_id
+        if target.is_symlink():
+            target.unlink()
+        elif target.exists():
+            shutil.rmtree(target)
+        # Sibling symlink: tiles_dir/<frame_id> → <canonical_id>. Relative
+        # so it stays valid even if tiles_dir is renamed.
+        target.symlink_to(plan.clone_from)
 
 
 # ---- reprojection + tiling helpers ----

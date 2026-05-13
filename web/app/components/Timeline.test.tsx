@@ -175,4 +175,41 @@ describe("Timeline", () => {
     );
     expect(screen.getByRole("slider")).toBeInTheDocument();
   });
+
+  it("omits the horizon button unless both horizon props are passed", () => {
+    render(
+      <Timeline
+        frames={FRAMES}
+        currentIndex={0}
+        nowIndex={0}
+        isPlaying={false}
+        onSeek={() => {}}
+        onTogglePlay={() => {}}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /Voorspelling-horizon/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the horizon button and switches on selection", async () => {
+    const onHorizonChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Timeline
+        frames={FRAMES}
+        currentIndex={0}
+        nowIndex={0}
+        isPlaying={false}
+        horizonHours={2}
+        onHorizonChange={onHorizonChange}
+        onSeek={() => {}}
+        onTogglePlay={() => {}}
+      />,
+    );
+    const btn = screen.getByRole("button", { name: /Voorspelling-horizon/ });
+    await user.click(btn);
+    await user.click(screen.getByRole("option", { name: "6 uur" }));
+    expect(onHorizonChange).toHaveBeenCalledWith(6);
+  });
 });
