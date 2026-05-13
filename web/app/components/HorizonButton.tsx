@@ -68,7 +68,7 @@ export function HorizonButton({ value, onChange }: Props) {
                     : "text-[--color-ink-700]"
                 }`}
               >
-                {h} uur
+                +{h} uur
               </button>
             </li>
           ))}
