@@ -144,9 +144,23 @@ export function RadarMap({
       };
       canvas.addEventListener("pointerdown", onPointerDown);
 
-      m.once("load", () => {
+      // Use `style.load`, not `load`. `load` only fires once MapLibre's
+      // raf-driven render loop completes a first frame; on some first-paint
+      // races (cold cache, deferred script execution under a hidden frame)
+      // that loop never ticks, so `load` never fires and the radar layers
+      // never get added — the map stays on its basemap background colour
+      // (black for dark-matter, white for positron) until a setStyle()
+      // kicks the loop. `style.load` only requires the style JSON to be
+      // parsed and the sources constructed, which is all this effect needs
+      // before handing off to the source-adding effect below.
+      const onReady = () => {
         if (!cancelled) setMapReady(true);
-      });
+      };
+      if (m.isStyleLoaded()) {
+        onReady();
+      } else {
+        m.once("style.load", onReady);
+      }
     })();
 
     return () => {
