@@ -12,7 +12,9 @@ enum SheetDetent: CaseIterable {
         switch self {
         case .collapsed: return min(0.95, collapsedPoints / totalHeight)
         case .medium:    return 0.55
-        case .expanded:  return max(0.55, 1 - (topInset + 24) / totalHeight)
+        // Fully cover the map at the expanded detent. The background also
+        // ignores the top safe area, so the status-bar strip is filled too.
+        case .expanded:  return 1.0
         }
     }
 }
@@ -65,7 +67,10 @@ struct BottomSheet<Header: View, Body: View>: View {
                 Color.owSurface
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .shadow(color: .black.opacity(0.12), radius: 14, y: -2)
-                    .ignoresSafeArea(edges: .bottom)
+                    // Extend the surface behind both the status bar (so the
+                    // fully-expanded sheet truly covers the map) and the
+                    // home indicator strip.
+                    .ignoresSafeArea(edges: [.top, .bottom])
             )
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .frame(maxHeight: .infinity, alignment: .bottom)
@@ -84,7 +89,10 @@ struct BottomSheet<Header: View, Body: View>: View {
         // Drag down → reduce height; drag up → increase.
         let h = baseHeight - dragTranslation
         let minH = collapsedHeight
-        let maxH = total - max(topInset + 24, 24)
+        // Allow the sheet to cover the full available height (incl. the
+        // status-bar strip, which the background paints behind via
+        // `ignoresSafeArea(edges: .top)`).
+        let maxH = total
         return min(maxH, max(minH, h))
     }
 
