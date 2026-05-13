@@ -65,15 +65,26 @@ struct BottomSheet<Header: View, Body: View>: View {
             .frame(height: h, alignment: .top)
             .background(
                 Color.owSurface
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .clipShape(
+                        UnevenRoundedRectangle(
+                            cornerRadii: .init(topLeading: 18, bottomLeading: 0, bottomTrailing: 0, topTrailing: 18),
+                            style: .continuous
+                        )
+                    )
                     .shadow(color: .black.opacity(0.12), radius: 14, y: -2)
                     // Extend the surface behind both the status bar (so the
                     // fully-expanded sheet truly covers the map) and the
                     // home indicator strip.
                     .ignoresSafeArea(edges: [.top, .bottom])
             )
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .clipShape(
+                UnevenRoundedRectangle(
+                    cornerRadii: .init(topLeading: 18, bottomLeading: 0, bottomTrailing: 0, topTrailing: 18),
+                    style: .continuous
+                )
+            )
             .frame(maxHeight: .infinity, alignment: .bottom)
+            .ignoresSafeArea(edges: .bottom)
             .animation(.interactiveSpring(response: 0.32, dampingFraction: 0.84), value: detent)
             .animation(.interactiveSpring(response: 0.32, dampingFraction: 0.84), value: dragTranslation)
         }
