@@ -18,6 +18,10 @@ struct RadarMapView: UIViewRepresentable {
     /// sheet. The map applies this as `contentInset` so `setCenter` aims at
     /// the visible area instead of the geometric center.
     let bottomObscuredInset: CGFloat
+    /// Fires when the user pans/zooms and the map settles. Programmatic
+    /// recenters (search picks, recenter button, inset re-aim) do not fire
+    /// this — they're filtered by `MLNCameraChangeReason.programmatic`.
+    let onUserCenterChanged: (CLLocationCoordinate2D) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -35,11 +39,13 @@ struct RadarMapView: UIViewRepresentable {
         map.maximumZoomLevel = 11
         map.delegate = context.coordinator
         context.coordinator.map = map
+        context.coordinator.onUserCenter = onUserCenterChanged
         context.coordinator.applyFrames(frames, currentId: frame?.id, baseURL: tileBaseURL)
         return map
     }
 
     func updateUIView(_ map: MLNMapView, context: Context) {
+        context.coordinator.onUserCenter = onUserCenterChanged
         if context.coordinator.currentBasemap != basemap {
             map.styleURL = basemap.url
             context.coordinator.currentBasemap = basemap
@@ -75,15 +81,21 @@ struct RadarMapView: UIViewRepresentable {
         /// Visible opacity for the active frame. Matches the pre-cross-fade
         /// look from the single-layer implementation.
         static let visibleOpacity: Float = 0.78
-        /// Cross-fade duration. Matches the web client (`FADE_MS = 220`) so
-        /// iOS and web playback feel identical, and so successive 220ms
-        /// auto-play ticks chain into continuous motion instead of discrete
-        /// steps.
-        static let fadeDuration: TimeInterval = 0.22
+        /// Cross-fade duration for adjacent frames *within the same data
+        /// source* (radar→radar, model→model). Matches the web client so iOS
+        /// and web playback feel identical, and so successive 220ms auto-play
+        /// ticks chain into continuous motion instead of discrete steps.
+        static let defaultFadeDuration: TimeInterval = 0.22
+        /// Longer cross-fade for transitions that cross the radar↔model
+        /// boundary. The two products show visibly different rain fields, so
+        /// holding both at non-zero opacity for ~half a second reads as a
+        /// deliberate model handoff instead of a glitch.
+        static let crossSourceFadeDuration: TimeInterval = 0.7
 
         weak var map: MLNMapView?
         var currentBasemap: BasemapStyle?
         var didCenter = false
+        var onUserCenter: ((CLLocationCoordinate2D) -> Void)?
 
         /// IDs of frames currently materialised as sources+layers on the
         /// active style. Kept in sync with the desired set on each call.
@@ -93,6 +105,13 @@ struct RadarMapView: UIViewRepresentable {
         private var pendingFrames: [Frame] = []
         private var pendingCurrentId: String?
         private var pendingBaseURL: URL?
+        /// `kind` of the previously-active frame, used to detect transitions
+        /// that cross the radar↔model boundary and stretch their cross-fade.
+        private var lastActiveKind: FrameKind?
+        /// Frame id last marked active. Tracked separately from
+        /// `pendingCurrentId` (which gets overwritten on entry) so we can
+        /// target the outgoing layer for the long fade-out.
+        private var lastActiveId: String?
 
         func applyFrames(_ frames: [Frame], currentId: String?, baseURL: URL) {
             pendingFrames = frames
@@ -144,7 +163,7 @@ struct RadarMapView: UIViewRepresentable {
                                                 source: source)
                 layer.rasterOpacity = NSExpression(forConstantValue: 0.0)
                 layer.rasterOpacityTransition = MLNTransition(
-                    duration: Self.fadeDuration, delay: 0
+                    duration: Self.defaultFadeDuration, delay: 0
                 )
                 // Disable per-tile fade-in inside a single source. We control
                 // visibility at the layer level via opacity transitions; the
@@ -159,13 +178,59 @@ struct RadarMapView: UIViewRepresentable {
             //    interpolates from the layer's current opacity (which may
             //    itself be mid-transition), so rapid playback chains into
             //    continuous motion instead of discrete pops.
+            //
+            //    If this transition crosses the radar↔model boundary, stretch
+            //    the cross-fade on both the outgoing-active and incoming-
+            //    active layers so the two products visibly overlap for a
+            //    moment instead of cutting.
+            let newKind = frames.first { $0.id == currentId }?.kind
+            let crossesBoundary = isCrossSourceTransition(from: lastActiveKind, to: newKind)
+            let outgoingId = lastActiveId
             for frame in frames {
                 guard let layer = style.layer(
                     withIdentifier: "radar-\(frame.id)-layer"
                 ) as? MLNRasterStyleLayer else { continue }
                 let target: Float = (frame.id == currentId) ? Self.visibleOpacity : 0.0
+                if crossesBoundary && (frame.id == currentId || frame.id == outgoingId) {
+                    layer.rasterOpacityTransition = MLNTransition(
+                        duration: Self.crossSourceFadeDuration, delay: 0
+                    )
+                } else if frame.id == currentId || frame.id == outgoingId {
+                    // Reset to the default on the layers involved in this
+                    // transition; layers not touched keep whatever they had.
+                    layer.rasterOpacityTransition = MLNTransition(
+                        duration: Self.defaultFadeDuration, delay: 0
+                    )
+                }
                 layer.rasterOpacity = NSExpression(forConstantValue: target)
             }
+            lastActiveKind = newKind
+            lastActiveId = currentId
+        }
+
+        /// True when the active frame is changing between a radar-derived
+        /// frame (`.observed`/`.nowcast`) and a HARMONIE-model frame
+        /// (`.hourly`). Same-source moves (radar→radar, model→model) and
+        /// first-paint (`from == nil`) return false.
+        private func isCrossSourceTransition(
+            from old: FrameKind?, to new: FrameKind?
+        ) -> Bool {
+            guard let old, let new, old != new else { return false }
+            func isRadar(_ k: FrameKind) -> Bool { k == .observed || k == .nowcast }
+            return isRadar(old) != isRadar(new)
+        }
+
+        func mapView(_ mapView: MLNMapView,
+                     regionDidChangeWith reason: MLNCameraChangeReason,
+                     animated: Bool) {
+            // Only treat a pan as a location change. Pinch-zoom, rotate,
+            // tilt, and the zoom buttons keep the user oriented around the
+            // current pin without re-querying weather data. Programmatic
+            // recenters (search picks, recenter button, inset re-aim,
+            // basemap-reload restore) are also ignored — they're echoes of
+            // state we already own.
+            guard reason.contains(.gesturePan) else { return }
+            onUserCenter?(mapView.centerCoordinate)
         }
 
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {

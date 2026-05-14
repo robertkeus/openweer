@@ -24,7 +24,15 @@ interface Props {
 
 const NL_CENTER: [number, number] = [5.3, 52.1];
 const NL_BOUNDS: [number, number, number, number] = [3.0, 50.6, 7.4, 53.7];
+/** Cross-fade duration for adjacent frames *within the same data source*
+ *  (radar→radar, model→model). Snappy enough for slider scrubbing and
+ *  auto-play to chain into continuous motion. */
 const FADE_MS = 220;
+/** Longer cross-fade when crossing the radar↔model seam at +2 h. Holding
+ *  both layers visible for ~half a second reads as a deliberate model
+ *  handoff instead of a glitch — the two products show visibly different
+ *  rain fields. */
+const CROSS_SOURCE_FADE_MS = 700;
 const BASEMAP_LIGHT = "https://tiles.openfreemap.org/styles/positron";
 // OpenFreeMap doesn't publish a dark style; CARTO's dark-matter is freely
 // hosted and attribution-compatible.
@@ -44,6 +52,18 @@ function isDocumentDark(): boolean {
 
 const RADAR_MIN_ZOOM = 6;
 const RADAR_MAX_ZOOM = 10;
+
+/** True when the active frame is changing between a radar-derived frame
+ *  (observed/nowcast) and a HARMONIE-model frame (hourly). Same-source
+ *  moves and first-paint (`prev === undefined`) return false. */
+function isCrossSourceTransition(
+  prev: Frame["kind"] | undefined,
+  next: Frame["kind"] | undefined,
+): boolean {
+  if (!prev || !next || prev === next) return false;
+  const isRadar = (k: Frame["kind"]) => k === "observed" || k === "nowcast";
+  return isRadar(prev) !== isRadar(next);
+}
 
 export function RadarMap({
   frames,
@@ -214,6 +234,7 @@ export function RadarMap({
   }, [mapReady, frames, currentIndex]);
 
   // ---- 3) On every index change, fade the previous out, the new one in ----
+  const prevIndexRef = useRef<number | null>(null);
   useEffect(() => {
     if (!mapReady) return;
     const m = mapRef.current as {
@@ -224,13 +245,36 @@ export function RadarMap({
       ) => unknown;
     } | null;
     if (!m || !frames.length) return;
+
+    // Cross-fade duration: bump to CROSS_SOURCE_FADE_MS when the active
+    // frame's kind shifts between radar (observed/nowcast) and model
+    // (hourly), so the two visibly-different rasters overlap for ~half a
+    // second instead of cutting.
+    const prevIndex = prevIndexRef.current;
+    const prevKind = prevIndex !== null ? frames[prevIndex]?.kind : undefined;
+    const nextKind = frames[currentIndex]?.kind;
+    const crossesSeam = isCrossSourceTransition(prevKind, nextKind);
+    const outgoingId =
+      prevIndex !== null ? frames[prevIndex]?.id : undefined;
+    const incomingId = frames[currentIndex]?.id;
+
     frames.forEach((frame, i) => {
+      // Only the two layers actually involved in this transition need their
+      // transition duration retuned; leave others on whatever they were.
+      if (frame.id === outgoingId || frame.id === incomingId) {
+        m.setPaintProperty(
+          `radar-${frame.id}`,
+          "raster-opacity-transition",
+          { duration: crossesSeam ? CROSS_SOURCE_FADE_MS : FADE_MS },
+        );
+      }
       m.setPaintProperty(
         `radar-${frame.id}`,
         "raster-opacity",
         i === currentIndex ? 1 : 0,
       );
     });
+    prevIndexRef.current = currentIndex;
   }, [currentIndex, mapReady, frames]);
 
   // ---- 4) Fly to a new center + drop a marker at the selected location ----
