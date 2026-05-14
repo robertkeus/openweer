@@ -344,8 +344,27 @@ function buildTenMinuteTicks(frames: Frame[], nowMs: number): Tick[] {
   if (span <= 0) return [];
   const first = Math.ceil(startTs / TEN_MIN_MS) * TEN_MIN_MS;
   const stepHours = labelStepHours(span);
-  // Anchor the labelled-hour grid on a multiple of `stepHours` so labels land
-  // on tidy clock positions (00, 03, 06… for stepHours=3).
+
+  // Ticks share the slider's *index-proportional* coordinate system so the
+  // cursor pill, the bars, and the labels all line up — including when the
+  // slider has mixed cadence (5-min radar nowcast + 10-min HARMONIE) or
+  // when the playable set has gaps from manifest dedup. We snap each tick's
+  // wall-clock time to the nearest frame index and place the label at that
+  // index's percentage along the bar row.
+  const frameTs = frames.map((f) => new Date(f.ts).getTime());
+  const nearestIndex = (target: number): number => {
+    let best = 0;
+    let bestDelta = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < frameTs.length; i++) {
+      const d = Math.abs(frameTs[i] - target);
+      if (d < bestDelta) {
+        bestDelta = d;
+        best = i;
+      }
+    }
+    return best;
+  };
+
   const ticks: Tick[] = [];
   for (let t = first; t <= endTs; t += TEN_MIN_MS) {
     const d = new Date(t);
@@ -354,10 +373,15 @@ function buildTenMinuteTicks(frames: Frame[], nowMs: number): Tick[] {
     const isNow = Math.abs(t - nowMs) < TEN_MIN_MS / 2;
     const collidesWithNow = !isNow && Math.abs(t - nowMs) < NOW_LABEL_GUARD_MS;
     const isLabelHour = minute === 0 && hour % stepHours === 0;
+    // Anchor on the wall-clock target (now or the tick time) then snap to
+    // the closest frame index — the cursor uses the same per-index pct,
+    // so Nu lands exactly under the cursor pill when the user is at "now".
+    const target = isNow ? nowMs : t;
+    const idx = nearestIndex(target);
     ticks.push({
       ts: t,
       label: formatHm(d.toISOString()),
-      pct: ((t - startTs) / span) * 100,
+      pct: pctForIndex(idx, frames.length),
       isNow,
       isMajor: minute % 30 === 0,
       isLabeled: isLabelHour && !collidesWithNow,

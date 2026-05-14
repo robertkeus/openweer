@@ -46,21 +46,6 @@ export function AiChatPanel({ context }: Props) {
         className="relative flex-1 overflow-y-auto px-4 py-3 space-y-3"
         aria-live="polite"
       >
-        {hasConversation ? (
-          <div className="sticky top-0 z-10 -mx-4 -mt-3 mb-1 flex justify-end px-3 pt-2 pb-1 bg-gradient-to-b from-[--color-surface] to-transparent">
-            <button
-              type="button"
-              onClick={clearConversation}
-              aria-label="Wis het gesprek"
-              title="Wis het gesprek"
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-[--color-ink-700] hover:text-[--color-ink-900] hover:bg-[--color-ink-50] focus:outline focus:outline-2 focus:outline-[--color-accent-500]"
-            >
-              <ResetIcon className="h-3.5 w-3.5" />
-              <span>Wis gesprek</span>
-            </button>
-          </div>
-        ) : null}
-
         {messages.length === 0 && !pending ? (
           <div className="text-sm text-[--color-ink-700]">
             <p className="mb-3">
@@ -121,6 +106,17 @@ export function AiChatPanel({ context }: Props) {
           composerRef.current?.focus();
         }}
       >
+        {hasConversation ? (
+          <button
+            type="button"
+            onClick={clearConversation}
+            aria-label="Wis het gesprek"
+            title="Wis het gesprek"
+            className="btn-secondary inline-grid place-items-center h-10 w-10 rounded-full flex-none"
+          >
+            <ResetIcon className="h-4 w-4" />
+          </button>
+        ) : null}
         <textarea
           ref={composerRef}
           value={draft}

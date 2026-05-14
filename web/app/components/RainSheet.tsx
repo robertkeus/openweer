@@ -31,6 +31,11 @@ interface Props {
   weather: ReactNode;
   /** Which tab opens by default. */
   defaultTab?: RainSheetTab;
+  /** Fires whenever the mobile sheet opens/closes — true on any non-closed
+   *  snap, regardless of the active tab. Lets the parent hide overlapping
+   *  bottom-pinned UI (the timeline) so the sheet contents don't have a
+   *  play bar poking out from underneath them. */
+  onMobileSheetOpenChange?: (open: boolean) => void;
 }
 
 export function RainSheet({
@@ -38,11 +43,20 @@ export function RainSheet({
   chat,
   weather,
   defaultTab = "chat",
+  onMobileSheetOpenChange,
 }: Props) {
   // Mobile starts collapsed (FAB only). Desktop has its own card so this
   // only affects narrow viewports. Tapping the FAB opens straight to "full".
   const [snap, setSnap] = useState<Snap>("closed");
   const [tab, setTab] = useState<RainSheetTab>(defaultTab);
+
+  // Notify the parent whenever the mobile sheet opens or closes so it can
+  // hide overlapping UI (the timeline) on small screens. Desktop has its
+  // own permanent card that doesn't fight the timeline, so we don't emit
+  // for it.
+  useEffect(() => {
+    onMobileSheetOpenChange?.(snap !== "closed");
+  }, [snap, onMobileSheetOpenChange]);
   const [dragOffset, setDragOffset] = useState<number | null>(null);
   const startYRef = useRef(0);
   const startSnapRef = useRef<Snap>(snap);

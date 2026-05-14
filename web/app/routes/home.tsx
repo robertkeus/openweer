@@ -113,6 +113,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     DEFAULT_FORECAST_HORIZON_HOURS,
   );
   const timeline = useRadarTimeline(liveFrames, horizonHours);
+  /** True while the mobile sheet is open on any tab (chat / weer / details).
+   *  We hide the timeline behind it so the play bar doesn't poke through.
+   *  Desktop has a permanent side panel that doesn't overlap the timeline,
+   *  so this stays false there. */
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const { resolved: resolvedTheme } = useTheme();
   const chatContext = buildContext({
     location,
@@ -291,6 +296,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       {/* Bottom-right tabbed panel (sits above the timeline). */}
       <RainSheet
         defaultTab="chat"
+        onMobileSheetOpenChange={setMobileSheetOpen}
         chat={<AiChatPanel context={chatContext} />}
         weather={
           <WeatherTab
@@ -331,8 +337,15 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         }
       />
 
-      {/* Full-width timeline pinned to viewport bottom. */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-2 sm:px-3 pb-[max(env(safe-area-inset-bottom,0),0.5rem)]">
+      {/* Full-width timeline pinned to viewport bottom. Hidden on mobile
+       *  whenever the sheet is open on *any* tab (chat / weer / details),
+       *  so the play bar doesn't poke through the panel. Desktop keeps it
+       *  visible since the side panel doesn't overlap the timeline. */}
+      <div
+        className={`pointer-events-none fixed inset-x-0 bottom-0 z-40 px-2 sm:px-3 pb-[max(env(safe-area-inset-bottom,0),0.5rem)] ${
+          mobileSheetOpen ? "hidden lg:block" : ""
+        }`}
+      >
         <Timeline
           frames={timeline.frames}
           currentIndex={timeline.currentIndex}

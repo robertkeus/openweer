@@ -209,7 +209,7 @@ describe("Timeline", () => {
     );
     const btn = screen.getByRole("button", { name: /Voorspelling-horizon/ });
     await user.click(btn);
-    await user.click(screen.getByRole("option", { name: "6 uur" }));
+    await user.click(screen.getByRole("option", { name: "+6 uur" }));
     expect(onHorizonChange).toHaveBeenCalledWith(6);
   });
 });
