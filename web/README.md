@@ -1,87 +1,70 @@
-# Welcome to React Router!
+# OpenWeer — Web
 
-A modern, production-ready template for building full-stack React applications using React Router.
+The React Router v7 frontend for [openweer.nl](https://openweer.nl). Renders the rain radar map, animated timeline, per-location rain forecast, current observations, and the AI chat panel.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+For the project overview, license, and architecture diagram see the [root README](../README.md) and [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-## Features
+## Stack
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+- **React Router v7** (framework mode, SSR)
+- **MapLibre GL** for the radar map and tile layer
+- **Tailwind CSS v4** for styling
+- **TypeScript** (strict) · **Zod** for runtime validation of API payloads
+- **Vitest** + Testing Library + msw for tests
 
-## Getting Started
+## Layout
 
-### Installation
+```
+app/
+├── root.tsx              # HTML shell, theme, global providers
+├── routes.ts             # route table
+├── routes/               # route modules (loaders + components)
+├── components/           # UI components (see below)
+└── lib/                  # formatting, API client, hooks
+```
 
-Install the dependencies:
+Notable components in [`app/components/`](app/components):
+
+| Component | Role |
+|---|---|
+| `RadarMap.client.tsx` | MapLibre canvas, KNMI tile layer, attribution |
+| `Timeline.tsx` | The hero scrubber — 60 fps, snaps to KNMI 5-minute frames |
+| `HorizonButton.tsx` | Switches between nowcast (+2h) and HARMONIE (+24h / +48h) |
+| `RainSheet.tsx` · `RainGraph.tsx` | Per-location minute-by-minute rain forecast |
+| `WeatherNowCard.tsx` · `WeatherTab.tsx` | Current observations and short-range forecast |
+| `AiChatPanel.tsx` · `ChatMarkdown.tsx` | AI chat over `/api/chat` |
+| `SiteFooter.tsx` | KNMI CC-BY-4.0 + MIT attribution (required) |
+
+## Local development
+
+Requires Node ≥ 22.
 
 ```bash
-npm install
+npm ci
+npm run dev          # http://localhost:5173
 ```
 
-### Development
+The dev server expects the FastAPI backend on `http://localhost:8000`. Start it with `docker compose up api` from the repo root, or follow the backend instructions in [`../api/README.md`](../api/README.md).
 
-Start the development server with HMR:
+## Scripts
 
 ```bash
-npm run dev
+npm run typecheck     # react-router typegen + tsc
+npm run lint          # eslint
+npm run format        # prettier --write
+npm run test          # vitest run
+npm run test:watch    # vitest in watch mode
+npm run build         # production build → build/
+npm start             # serve the production build
 ```
 
-Your application will be available at `http://localhost:5173`.
+All four (`typecheck`, `lint`, `format:check`, `test`) run in CI on every push — see [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
-## Building for Production
+## Conventions
 
-Create a production build:
+- Strict TypeScript; no `any`. Validate external data (KNMI, API responses) with Zod at the boundary.
+- Microcopy in Dutch; keep English fallback strings where they exist.
+- Accessibility: WCAG 2.2 AA. Keyboard-reachable controls, visible focus, ARIA on map controls, `prefers-reduced-motion` disables animation.
+- Performance budget: LCP < 1.5 s on 4G; Lighthouse ≥ 95.
 
-```bash
-npm run build
-```
-
-## Deployment
-
-### Docker Deployment
-
-To build and run using Docker:
-
-```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
-```
-
-The containerized application can be deployed to any platform that supports Docker, including:
-
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+See [`../CLAUDE.md`](../CLAUDE.md) for the full engineering rules.
