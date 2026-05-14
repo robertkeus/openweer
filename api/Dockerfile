@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 # ---------- builder: install deps with uv into a project venv ----------
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 
 # ---------- runtime: minimal Python slim, non-root, no build tools ------
-FROM python:3.13-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
