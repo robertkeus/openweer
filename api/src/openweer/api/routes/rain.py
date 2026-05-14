@@ -1,8 +1,9 @@
 """GET /api/rain/{lat}/{lon} — minute-by-minute rain at a point.
 
-Combines the 2 h radar nowcast (5-min cadence) with hourly HARMONIE-AROME
-samples for everything beyond the nowcast horizon, fanned onto 10-min slots
-so the slider's bar graph stays uniformly dense.
+Combines past observations (the last ~2 h of ingested radar files, one
+image1 each) with the 2 h radar nowcast (5-min cadence) and the HARMONIE-
+AROME hourly forecast (fanned to 10-min slots) so the slider's bar graph
+is filled from `-2 h` history through `+24 h` outlook in a single payload.
 """
 
 from __future__ import annotations
@@ -29,6 +30,8 @@ from openweer.forecast.rain_harmonie import (
     expand_to_10min_slots,
     sample_harmonie_at_point,
 )
+from openweer.forecast.rain_history import sample_rain_history
+from openweer.knmi.datasets import get_dataset
 from openweer.tiler.pipeline import HARMONIE_FORECAST_HOURS
 
 log = get_logger(__name__)
@@ -73,6 +76,30 @@ async def rain(
         )
         for s in nowcast.samples
     ]
+
+    # Past 2 h of observed rain at this point — one sample per ingested
+    # radar file (image1 = analysis-time observation). Lets the slider's
+    # intensity bars fill in to the LEFT of "Nu" instead of staying blank.
+    radar_dir = state.ingest.raw_dir(get_dataset("radar_forecast"))
+    try:
+        history = await asyncio.to_thread(
+            sample_rain_history,
+            radar_dir,
+            lat=lat,
+            lon=lon,
+            analysis_at=nowcast.analysis_at,
+            exclude_filenames=(hdf5_path.name,),
+        )
+        for h in history:
+            samples.append(
+                RainSampleOut(
+                    minutes_ahead=h.minutes_ahead,
+                    mm_per_h=h.mm_per_h,
+                    valid_at=h.valid_at,
+                )
+            )
+    except Exception:
+        log.exception("rain.history_sample_failed")
 
     # Best-effort HARMONIE extension: if a tar is on disk, sample the user's
     # point at every forecast hour past the nowcast tail. Any failure here

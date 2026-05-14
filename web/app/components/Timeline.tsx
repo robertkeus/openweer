@@ -274,7 +274,10 @@ function buildIntensityBars(
   });
 }
 
-/** Bucket samples to 10-min boundaries, keeping the max mm/h per bucket. */
+/** Bucket samples to 10-min boundaries, keeping the max mm/h per bucket.
+ *  A sample worth `0 mm/h` still counts as data — the bar will render as a
+ *  short "no-rain" tick instead of the empty-bucket dimmed style, so the
+ *  user can tell "we measured zero" apart from "we have no measurement". */
 function bucketSamplesByTenMinutes(
   samples: readonly RainSample[],
 ): Map<number, number> {
@@ -283,8 +286,10 @@ function bucketSamplesByTenMinutes(
     const ts = new Date(s.valid_at).getTime();
     if (Number.isNaN(ts)) continue;
     const key = roundToTenMinutes(ts);
-    const prev = buckets.get(key) ?? 0;
-    if (s.mm_per_h > prev) buckets.set(key, s.mm_per_h);
+    const prev = buckets.get(key);
+    if (prev === undefined || s.mm_per_h > prev) {
+      buckets.set(key, s.mm_per_h);
+    }
   }
   return buckets;
 }
