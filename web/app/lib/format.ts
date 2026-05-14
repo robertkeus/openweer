@@ -13,7 +13,7 @@ export function formatMmPerHour(mm: number): string {
   }).format(mm)} mm/u`;
 }
 
-/** Verdict matching the buienradar.nl convention: dry / light / moderate / heavy. */
+/** Verdict matching the convention from popular rain radar companies: dry / light / moderate / heavy. */
 export type RainVerdict = "droog" | "licht" | "matig" | "zwaar";
 
 const THRESHOLDS: ReadonlyArray<readonly [number, RainVerdict]> = [

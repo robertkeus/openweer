@@ -4,7 +4,7 @@
 
 [openweer.nl](https://openweer.nl) — animated rain radar, per-location 2-hour minute-by-minute rain forecast, current observations, and short-range hourly forecast extending to ~48 hours via HARMONIE-AROME.
 
-OpenWeer is an open-source clone of [buienradar.nl](https://buienradar.nl), powered exclusively by the [KNMI Open Data Platform](https://dataplatform.knmi.nl/) (CC-BY-4.0).
+Inspired by popular rain radar companies, OpenWeer is powered exclusively by the [KNMI Open Data Platform](https://dataplatform.knmi.nl/) (CC-BY-4.0).
 
 ## Status
 
