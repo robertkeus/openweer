@@ -15,6 +15,18 @@ interface Props {
 
 const BAR_GAP = 2;
 
+/** RainGraph + RainSummary are the "next 2 hours" surface. With the +24 h
+ *  HARMONIE extension landing in `/api/rain`, the response now carries
+ *  ~136 samples. Squeezing all of them into the chart's narrow viewBox
+ *  collapses each bar to a negative width and the chart goes blank —
+ *  and the summary's peak/total stop describing what the chart shows.
+ *  Cap both to the radar-nowcast window. */
+const MAX_MINUTES_AHEAD = 120;
+
+function within2h(samples: readonly RainSample[]): readonly RainSample[] {
+  return samples.filter((s) => s.minutes_ahead <= MAX_MINUTES_AHEAD);
+}
+
 function maxBound(samples: readonly RainSample[]): number {
   const observed = Math.max(...samples.map((s) => s.mm_per_h), 0);
   // Always show at least 2 mm/h on the y-axis so dry forecasts have visual context.
@@ -34,10 +46,11 @@ function colorFor(mm: number): string {
   return "rgb(192,38,211)";
 }
 
-export function RainGraph({ samples, height = 140 }: Props) {
+export function RainGraph({ samples: input, height = 140 }: Props) {
   // Hook must run unconditionally — keep above any early returns (rules-of-hooks).
   const [hovered, setHovered] = useState<number | null>(null);
 
+  const samples = within2h(input);
   if (!samples.length) return null;
 
   const allDry = samples.every((s) => s.mm_per_h < 0.1);
@@ -159,7 +172,8 @@ interface SummaryProps {
   action?: ReactNode;
 }
 
-export function RainSummary({ samples, action }: SummaryProps) {
+export function RainSummary({ samples: input, action }: SummaryProps) {
+  const samples = within2h(input);
   if (!samples.length) return null;
   const peak = samples.reduce((a, b) => (a.mm_per_h > b.mm_per_h ? a : b));
   const totalMm = samples.reduce((s, x) => s + x.mm_per_h, 0) / 12;
