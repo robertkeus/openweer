@@ -20,6 +20,16 @@ enum LanguagePreference: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// User-selectable forecast horizon. +2h is the radar-only nowcast horizon;
+/// longer values bring in HARMONIE-AROME hourly forecast frames.
+enum ForecastHorizon: Int, CaseIterable, Identifiable, Codable {
+    case h2 = 2, h3 = 3, h6 = 6, h8 = 8, h12 = 12, h24 = 24
+    var id: Int { rawValue }
+    var hours: Int { rawValue }
+
+    static let `default`: ForecastHorizon = .h2
+}
+
 @Observable
 final class AppState {
     var theme: ThemePreference {
@@ -34,6 +44,9 @@ final class AppState {
 
     var frames: [Frame] = []
     var selectedFrameIndex: Int = 0
+    var forecastHorizon: ForecastHorizon {
+        didSet { UserDefaults.standard.set(forecastHorizon.rawValue, forKey: "forecastHorizon") }
+    }
 
     var rain: RainResponse?
     var weather: WeatherResponse?
@@ -45,6 +58,9 @@ final class AppState {
 
         let storedLang = UserDefaults.standard.string(forKey: "language").flatMap(LanguagePreference.init(rawValue:))
         self.language = storedLang ?? .nl
+
+        let storedHorizon = ForecastHorizon(rawValue: UserDefaults.standard.integer(forKey: "forecastHorizon"))
+        self.forecastHorizon = storedHorizon ?? .default
 
         let amsterdam = KnownLocations.all.first { $0.slug == "amsterdam" }!
         self.coordinate = amsterdam.coordinate

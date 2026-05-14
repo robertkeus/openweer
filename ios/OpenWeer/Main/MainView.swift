@@ -24,7 +24,7 @@ struct MainView: View {
                 ZStack {
                     RadarMapView(
                         coordinate: state.coordinate,
-                        frames: state.frames,
+                        frames: playableFrames,
                         frame: currentFrame,
                         basemap: BasemapStyle.resolve(for: colorScheme),
                         tileBaseURL: apiBaseURL(),
@@ -87,6 +87,14 @@ struct MainView: View {
             await tryUseUserLocationOnLaunch()
             await loadAllData()
         }
+        .onChange(of: appState.forecastHorizon) { oldHorizon, _ in
+            // Re-anchor / reclamp the cursor when the visible window changes.
+            let priorCount = PlayableFrames
+                .filter(appState.frames, horizon: oldHorizon)
+                .count
+            reclampSelection(previousCount: priorCount)
+            clock.stop()
+        }
         .sheet(isPresented: $chatPresented) {
             AiChatPanel()
                 .environment(appState)
@@ -112,8 +120,15 @@ struct MainView: View {
         }
     }
 
+    /// Frames currently visible on the slider — filtered by horizon so picking
+    /// +2h shows radar nowcast only and longer horizons admit HARMONIE-AROME
+    /// hourly forecast frames.
+    private var playableFrames: [Frame] {
+        PlayableFrames.filter(appState.frames, horizon: appState.forecastHorizon)
+    }
+
     private var currentFrame: Frame? {
-        let frames = appState.frames
+        let frames = playableFrames
         guard !frames.isEmpty else { return nil }
         return frames[max(0, min(frames.count - 1, appState.selectedFrameIndex))]
     }
@@ -172,6 +187,7 @@ struct MainView: View {
     private var timelineCard: some View {
         @Bindable var state = appState
         VStack(alignment: .leading, spacing: 10) {
+            let playable = playableFrames
             HStack {
                 Text(timeLabel)
                     .font(.system(size: 13, weight: .semibold))
@@ -181,8 +197,9 @@ struct MainView: View {
                     if clock.isPlaying {
                         clock.stop()
                     } else {
-                        clock.start(framesCount: state.frames.count) {
-                            let next = (state.selectedFrameIndex + 1) % max(state.frames.count, 1)
+                        let count = playable.count
+                        clock.start(framesCount: count) {
+                            let next = (state.selectedFrameIndex + 1) % max(count, 1)
                             state.selectedFrameIndex = next
                         }
                     }
@@ -195,8 +212,10 @@ struct MainView: View {
                         .clipShape(Circle())
                 }
                 .accessibilityLabel(clock.isPlaying ? "Pauze" : "Afspelen")
+                HorizonButton(value: $state.forecastHorizon)
             }
-            TimelineSlider(frames: state.frames,
+            TimelineSlider(frames: playable,
+                           rainSamples: state.rain?.samples ?? [],
                            selectedIndex: $state.selectedFrameIndex)
         }
         .padding(14)
@@ -237,11 +256,30 @@ struct MainView: View {
             let resp = try await APIClient.shared.frames()
             await MainActor.run {
                 appState.frames = resp.frames
-                let observed = resp.frames.lastIndex(where: { $0.kind == .observed }) ?? max(0, resp.frames.count - 1)
-                appState.selectedFrameIndex = observed
+                anchorSelectionAtNow()
             }
         } catch {
             await MainActor.run { loadError = String(describing: error) }
+        }
+    }
+
+    /// Pin the slider cursor on the frame closest to wall-clock now within
+    /// the currently visible (horizon-filtered) window.
+    private func anchorSelectionAtNow() {
+        let playable = playableFrames
+        guard !playable.isEmpty else { return }
+        appState.selectedFrameIndex = PlayableFrames.currentIndex(in: playable)
+    }
+
+    /// Keep `selectedFrameIndex` in-bounds when the horizon shrinks; re-anchor
+    /// on "now" when it grows.
+    private func reclampSelection(previousCount: Int) {
+        let playable = playableFrames
+        guard !playable.isEmpty else { return }
+        if playable.count < previousCount {
+            appState.selectedFrameIndex = min(appState.selectedFrameIndex, playable.count - 1)
+        } else {
+            anchorSelectionAtNow()
         }
     }
 
