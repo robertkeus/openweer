@@ -2,8 +2,9 @@
 
 Combines past observations (the last ~2 h of ingested radar files, one
 image1 each) with the 2 h radar nowcast (5-min cadence) and the HARMONIE-
-AROME hourly forecast (fanned to 10-min slots) so the slider's bar graph
-is filled from `-2 h` history through `+24 h` outlook in a single payload.
+AROME hourly forecast (one sample per forecast hour) so the slider's bar
+graph is filled from `-2 h` history through `+24 h` outlook in a single
+payload.
 """
 
 from __future__ import annotations
@@ -26,10 +27,7 @@ from openweer.api.dependencies import (
     latest_radar_forecast_path,
 )
 from openweer.forecast.rain_2h import RainNowcast, sample_rain_nowcast
-from openweer.forecast.rain_harmonie import (
-    expand_to_10min_slots,
-    sample_harmonie_at_point,
-)
+from openweer.forecast.rain_harmonie import sample_harmonie_at_point
 from openweer.forecast.rain_history import sample_rain_history
 from openweer.knmi.datasets import get_dataset
 from openweer.tiler.pipeline import HARMONIE_FORECAST_HOURS
@@ -120,14 +118,14 @@ async def rain(
                 (s.minutes_ahead for s in nowcast.samples), default=0
             )
             # Keep only HARMONIE samples that land past the radar nowcast end.
-            for slot in expand_to_10min_slots(hourly):
-                if slot.minutes_ahead <= nowcast_end_min:
+            for s in hourly:
+                if s.minutes_ahead <= nowcast_end_min:
                     continue
                 samples.append(
                     RainSampleOut(
-                        minutes_ahead=slot.minutes_ahead,
-                        mm_per_h=slot.mm_per_h,
-                        valid_at=slot.valid_at,
+                        minutes_ahead=s.minutes_ahead,
+                        mm_per_h=s.mm_per_h,
+                        valid_at=s.valid_at,
                     )
                 )
         except Exception:

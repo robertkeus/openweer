@@ -77,27 +77,29 @@ def _build_pipeline(tmp_path: Path) -> RadarTilePipeline:
     )
 
 
-def test_renders_hourly_frames_fanned_to_10_min_cadence(tmp_path: Path) -> None:
-    """HARMONIE delivers hourly forecasts; we fan each out into six 10-min
-    sub-frames sharing the same rain field so the slider's cadence stays
-    uniform with the radar nowcast portion."""
+def test_emits_one_frame_per_harmonie_forecast_hour(tmp_path: Path) -> None:
+    """KNMI's HARMONIE-AROME open-data feed only resolves hourly precipitation,
+    so we emit exactly one slider frame per forecast hour rather than fan it
+    out into identical sub-minute slots — the user can tell adjacent ticks apart
+    instead of seeing the same rain field repeated 6 times per hour."""
     tar_path = _write_harmonie_tar(tmp_path)
     pipeline = _build_pipeline(tmp_path)
 
     frames = pipeline.render_file(tar_path)
 
     assert {f.kind for f in frames} == {"hourly"}
-    assert {f.cadence_minutes for f in frames} == {10}
-    # 6 forecast hours × 6 slots per hour = 36 sub-frames.
-    assert len(frames) == 36
-    # Every slot timestamp must fall on a 10-min boundary.
+    assert {f.cadence_minutes for f in frames} == {60}
+    # 6 forecast hours (HARMONIE_FORECAST_HOURS = range(3, 25), clipped to the
+    # synthetic tar's hours 3..8) → 6 frames, no fan-out.
+    assert len(frames) == 6
+    # Every frame timestamp must fall on the hour boundary.
     for f in frames:
-        assert f.ts.minute % 10 == 0, f"{f.id} not on a 10-min boundary"
+        assert f.ts.minute == 0, f"{f.id} not on the hour"
 
 
-def test_skips_harmonie_slots_already_covered_by_nowcast(tmp_path: Path) -> None:
-    """If the manifest already has nowcast/observed for a wall-clock minute,
-    the HARMONIE slot at that same minute must not be emitted — radar wins."""
+def test_skips_harmonie_hour_already_covered_by_nowcast(tmp_path: Path) -> None:
+    """If the manifest already has nowcast/observed for a wall-clock hour,
+    the HARMONIE frame at that same hour must not be emitted — radar wins."""
     from datetime import UTC, datetime
 
     from openweer.tiler.manifest import Frame
@@ -105,7 +107,7 @@ def test_skips_harmonie_slots_already_covered_by_nowcast(tmp_path: Path) -> None
     tar_path = _write_harmonie_tar(tmp_path)
     pipeline = _build_pipeline(tmp_path)
 
-    # Pre-seed a nowcast frame at the HARMONIE hour-3 end slot (REF_TIME + 3h).
+    # Pre-seed a nowcast frame at HARMONIE forecast hour 3 (REF_TIME + 3h).
     nowcast_ts = datetime.fromtimestamp(REF_TIME + 3 * 3600, tz=UTC)
     nowcast_id = nowcast_ts.strftime("%Y%m%dT%H%M") + "Z"
     pipeline.manifest.upsert(
@@ -124,8 +126,8 @@ def test_skips_harmonie_slots_already_covered_by_nowcast(tmp_path: Path) -> None
 
     written_ids = {f.id for f in frames}
     assert nowcast_id not in written_ids, "HARMONIE must defer to existing nowcast"
-    # One of the 36 slots got dropped; 35 remain.
-    assert len(frames) == 35
+    # One of the 6 hourly frames got dropped; 5 remain.
+    assert len(frames) == 5
 
 
 def test_manifest_contains_hourly_frame(tmp_path: Path) -> None:
@@ -136,7 +138,7 @@ def test_manifest_contains_hourly_frame(tmp_path: Path) -> None:
     manifest = pipeline.manifest.read()
     hourly = [f for f in manifest.frames if f.kind == "hourly"]
     assert hourly
-    assert all(f.cadence_minutes == 10 for f in hourly)
+    assert all(f.cadence_minutes == 60 for f in hourly)
 
 
 def test_tile_dirs_written_for_every_zoom(tmp_path: Path) -> None:
@@ -147,10 +149,52 @@ def test_tile_dirs_written_for_every_zoom(tmp_path: Path) -> None:
     assert frames
     for frame in frames:
         frame_dir = pipeline.tiles_dir / frame.id
+        # Must be a real directory now — the symlink-clone fan-out is gone.
         assert frame_dir.is_dir(), f"missing tile dir for {frame.id}"
+        assert not frame_dir.is_symlink(), (
+            f"{frame.id} is a symlink; HARMONIE frames must be unique tile sets"
+        )
         for zoom in pipeline.zoom_levels:
             pngs = list((frame_dir / str(zoom)).rglob("*.png"))
             assert pngs, f"no tiles at zoom {zoom} for frame {frame.id}"
+
+
+def test_consecutive_harmonie_frames_render_to_distinct_tile_bytes(
+    tmp_path: Path,
+) -> None:
+    """Adjacent HARMONIE frames must have different tile bytes — the user
+    feedback that prompted this change was that adjacent slider ticks past +2 h
+    showed the identical PNG (because the old fan-out symlinked them all)."""
+    import hashlib
+
+    work = tmp_path / "steps"
+    work.mkdir()
+    # Hours 0..4 chosen so consecutive per-hour mm/h diffs land in *different*
+    # colormap buckets (so the rendered PNGs must differ byte-for-byte):
+    #   h3 mm/h = 30 - 5  = 25  → red bucket (20–50)
+    #   h4 mm/h = 150 - 30 = 120 → magenta bucket (≥50)
+    accs = [0.0, 0.5, 5.0, 30.0, 150.0]
+    paths = [_write_step(work, h, accs[h]) for h in range(len(accs))]
+    tar = tmp_path / "harmonie.tar"
+    with tarfile.open(tar, "w") as tf:
+        for p in paths:
+            tf.add(p, arcname=p.name)
+
+    pipeline = _build_pipeline(tmp_path)
+    frames = pipeline.render_file(tar)
+
+    # Two consecutive hourly frames; pick any tile that's present in both.
+    assert len(frames) >= 2
+    a, b = frames[0], frames[1]
+
+    def _first_png(frame_id: str) -> bytes:
+        for png in (pipeline.tiles_dir / frame_id).rglob("*.png"):
+            return png.read_bytes()
+        raise AssertionError(f"no tile png for {frame_id}")
+
+    assert hashlib.sha256(_first_png(a.id)).digest() != hashlib.sha256(
+        _first_png(b.id)
+    ).digest(), "adjacent HARMONIE frames must render to different bytes"
 
 
 def test_unknown_file_suffix_returns_empty_and_does_not_raise(tmp_path: Path) -> None:

@@ -5,9 +5,9 @@ Reads the same per-step GRIBs out of the HARMONIE tar that the tiler already
 consumes; samples the APCP band at the requested (lat, lon) at every requested
 forecast hour and differences successive accumulations to mm/h.
 
-Results are then expanded onto 10-min slots (every slot in a HARMONIE hour
-shares the same rate) so the slider's bar graph stays uniformly dense past
-the nowcast seam.
+Emits one sample per forecast hour. The KNMI Open Data feed only resolves
+hourly precipitation; the slider's bar graph past +2 h therefore shows one
+bar per hour rather than synthesising sub-hourly intermediates.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ import tarfile
 import tempfile
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -32,10 +32,6 @@ log = get_logger(__name__)
 _STEP_RE = re.compile(r"_(\d{5})_GB$")
 _PRECIP_ELEMENTS = frozenset({"APCP", "TP"})
 _INT_RE = re.compile(r"-?\d+")
-# Match the slider's HARMONIE slot fan-out so every 10-min bar in the slider
-# has a non-empty bucket. (HARMONIE only resolves the hourly average rate;
-# we lay the same rate across the slots within that hour.)
-_SLOT_OFFSETS_MIN: tuple[int, ...] = (-50, -40, -30, -20, -10, 0)
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,23 +90,6 @@ def sample_harmonie_at_point(
                 )
             )
     return samples
-
-
-def expand_to_10min_slots(samples: list[HarmonieSample]) -> list[HarmonieSample]:
-    """Fan each hourly HARMONIE sample out onto six 10-min slots ending at
-    `valid_at` so the slider's bar graph stays uniformly dense past +2 h."""
-    out: list[HarmonieSample] = []
-    for s in samples:
-        for offset in _SLOT_OFFSETS_MIN:
-            slot_ts = s.valid_at + timedelta(minutes=offset)
-            out.append(
-                HarmonieSample(
-                    minutes_ahead=s.minutes_ahead + offset,
-                    mm_per_h=s.mm_per_h,
-                    valid_at=slot_ts,
-                )
-            )
-    return out
 
 
 def _extract_steps(
@@ -191,4 +170,4 @@ def _parse_unix(text: str | None) -> datetime | None:
     return datetime.fromtimestamp(seconds, tz=UTC)
 
 
-__all__ = ["HarmonieSample", "expand_to_10min_slots", "sample_harmonie_at_point"]
+__all__ = ["HarmonieSample", "sample_harmonie_at_point"]
