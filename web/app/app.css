@@ -173,13 +173,14 @@ body {
   background: var(--color-ink-50);
 }
 
-/* Sheet snap heights — referenced by RainSheet. The sheet sits *above* the
-   bottom timeline, so heights exclude the timeline strip. */
+/* Sheet snap heights — referenced by RainSheet. The mobile sheet sits flush
+   to the viewport bottom (the timeline is hidden when the sheet is open),
+   so heights are pure viewport fractions. */
 :root {
   --timeline-height: 6.5rem;
   --sheet-peek: 16vh;
   --sheet-half: 44vh;
-  --sheet-full: calc(86vh - var(--timeline-height));
+  --sheet-full: 86vh;
 }
 
 /* Timeline panel — more opaque than glass-card so the bars and controls

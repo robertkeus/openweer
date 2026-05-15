@@ -153,9 +153,13 @@ export function RainSheet({
           ref={sheetRef}
           role="dialog"
           aria-label="Weer­paneel"
-          className="lg:hidden fixed inset-x-0 z-30 glass-card rounded-b-none rounded-t-2xl will-change-[height,transform] flex flex-col"
+          // Sticks flush to the viewport bottom — the timeline below is
+          // hidden whenever the sheet is open (see home.tsx), so leaving a
+          // timeline-sized gap here only makes the sheet float oddly. The
+          // inner scroll area handles safe-area-inset-bottom for devices
+          // with a home indicator. Matches the iOS app's bottom sheet.
+          className="lg:hidden fixed inset-x-0 bottom-0 z-30 glass-card rounded-b-none rounded-t-2xl will-change-[height,transform] flex flex-col"
           style={{
-            bottom: "var(--timeline-height)",
             height: SNAP_VAR[snap],
             transform:
               dragOffset !== null ? `translateY(${dragOffset}px)` : undefined,
