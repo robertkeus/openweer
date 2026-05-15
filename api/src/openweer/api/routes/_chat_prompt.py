@@ -45,12 +45,14 @@ MAJOR_CITIES: tuple[City, ...] = (
 class ChatRainSample(BaseModel):
     """One sample of the rain forecast.
 
-    Range covers the radar nowcast (-30 → +120 min, 5-min cadence) plus the
-    HARMONIE-AROME hourly extension out to +24 h, so `minutes_ahead` can be
-    up to ~1500 (25 h, slack for clock skew).
+    Range covers the observed-radar tail (back to ~-120 min, since the
+    slider now fills in past observations as well), the radar nowcast
+    (-30 → +120 min, 5-min cadence), and the HARMONIE-AROME hourly
+    extension out to +24 h — so `minutes_ahead` runs from roughly -150
+    (slack) to ~1500 (25 h, slack for clock skew).
     """
 
-    minutes_ahead: int = Field(ge=-30, le=1500)
+    minutes_ahead: int = Field(ge=-150, le=1500)
     mm_per_h: float = Field(ge=0.0, le=200.0)
     valid_at: datetime
 
