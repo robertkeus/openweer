@@ -13,7 +13,10 @@ interface Props {
   height?: number;
 }
 
-const BAR_GAP = 2;
+// Gap between bars in viewBox units. Stays small relative to a typical bar
+// (~3.5 units wide for 24 5-min samples spanning width=100) so bars dominate
+// and a passing shower reads as a chunky cluster rather than thin pinstripes.
+const BAR_GAP = 0.4;
 
 /** RainGraph + RainSummary are the "next 2 hours" surface. With the +24 h
  *  HARMONIE extension landing in `/api/rain`, the response now carries
