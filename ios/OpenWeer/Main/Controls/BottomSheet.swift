@@ -30,6 +30,7 @@ struct BottomSheet<Header: View, Body: View>: View {
     @ViewBuilder let bodyContent: () -> Body
 
     @State private var dragTranslation: CGFloat = 0
+    @State private var snapFeedback = 0
 
     var body: some View {
         GeometryReader { geo in
@@ -85,8 +86,10 @@ struct BottomSheet<Header: View, Body: View>: View {
             )
             .frame(maxHeight: .infinity, alignment: .bottom)
             .ignoresSafeArea(edges: .bottom)
-            .animation(.interactiveSpring(response: 0.32, dampingFraction: 0.84), value: detent)
-            .animation(.interactiveSpring(response: 0.32, dampingFraction: 0.84), value: dragTranslation)
+            // Snap animations are applied explicitly in onEnded / cycleDetent.
+            // Drag-driven height changes are intentionally NOT animated so the
+            // sheet tracks the finger 1:1 instead of lagging behind a spring.
+            .sensoryFeedback(.impact(weight: .medium), trigger: snapFeedback)
         }
     }
 
@@ -97,14 +100,12 @@ struct BottomSheet<Header: View, Body: View>: View {
             topInset: topInset
         )
         let baseHeight = total * baseFraction
-        // Drag down → reduce height; drag up → increase.
-        let h = baseHeight - dragTranslation
-        let minH = collapsedHeight
-        // Allow the sheet to cover the full available height (incl. the
-        // status-bar strip, which the background paints behind via
-        // `ignoresSafeArea(edges: .top)`).
-        let maxH = total
-        return min(maxH, max(minH, h))
+        // Drag down → reduce height; drag up → increase. Hard-clamp at both
+        // bounds: shrinking below `collapsedHeight` would clip the header
+        // (handle + search + timeline card all live there), and growing past
+        // `total` just pushes the top off-screen with no visible feedback.
+        let raw = baseHeight - dragTranslation
+        return min(total, max(collapsedHeight, raw))
     }
 
     private func dragGesture(total: CGFloat, topInset: CGFloat) -> some Gesture {
@@ -113,24 +114,39 @@ struct BottomSheet<Header: View, Body: View>: View {
                 dragTranslation = value.translation.height
             }
             .onEnded { value in
-                let projectedDelta = value.predictedEndTranslation.height
+                // Amplify the velocity component of `predictedEndTranslation`
+                // so a flick decisively skips detents. iOS's built-in
+                // projection is conservative and tends to under-shoot the
+                // gesture, which is exactly what makes the sheet feel weak.
+                let velocityDelta = value.predictedEndTranslation.height
+                    - value.translation.height
+                let amplified = value.translation.height + velocityDelta * 1.6
                 let baseHeight = total * detent.fraction(
                     forCollapsedHeight: collapsedHeight,
                     totalHeight: total,
                     topInset: topInset
                 )
-                let projectedHeight = baseHeight - projectedDelta
-                detent = nearestDetent(to: projectedHeight, total: total, topInset: topInset)
-                dragTranslation = 0
+                let projectedHeight = baseHeight - amplified
+                let next = nearestDetent(to: projectedHeight,
+                                         total: total, topInset: topInset)
+                let changed = next != detent
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                    detent = next
+                    dragTranslation = 0
+                }
+                if changed { snapFeedback &+= 1 }
             }
     }
 
     private func cycleDetent() {
-        switch detent {
-        case .collapsed: detent = .medium
-        case .medium:    detent = .expanded
-        case .expanded:  detent = .collapsed
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+            switch detent {
+            case .collapsed: detent = .medium
+            case .medium:    detent = .expanded
+            case .expanded:  detent = .collapsed
+            }
         }
+        snapFeedback &+= 1
     }
 
     private func nearestDetent(to height: CGFloat, total: CGFloat, topInset: CGFloat) -> SheetDetent {
