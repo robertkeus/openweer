@@ -241,6 +241,15 @@ body {
   appearance: none;
   background: transparent;
   outline-offset: 4px;
+  /* iOS Safari otherwise paints a translucent grey rectangle the size of
+     the tapped element on touch — visible as a pill behind the cursor. */
+  -webkit-tap-highlight-color: transparent;
+}
+/* Touch/mouse focus has no visual cue from the input itself — the cursor
+   pill above the track conveys position. Keyboard users still get the
+   default outline via :focus-visible. */
+.timeline-range:focus:not(:focus-visible) {
+  outline: none;
 }
 .timeline-range::-webkit-slider-runnable-track {
   background: transparent;
@@ -257,6 +266,10 @@ body {
   height: 100%;
   background: transparent;
   border: none;
+  /* iOS Safari draws an accessibility ring on the focused thumb even after
+     -webkit-appearance: none unless we explicitly clear outline + shadow. */
+  outline: none;
+  box-shadow: none;
   cursor: grab;
 }
 .timeline-range::-moz-range-thumb {
@@ -264,6 +277,8 @@ body {
   height: 100%;
   background: transparent;
   border: none;
+  outline: none;
+  box-shadow: none;
   cursor: grab;
 }
 .timeline-range:active::-webkit-slider-thumb {
