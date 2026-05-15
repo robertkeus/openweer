@@ -23,10 +23,7 @@ struct WeatherNowChip: View {
             Spacer(minLength: 8)
             if let weather {
                 HStack(spacing: 8) {
-                    Image(systemName: WeatherIcon.symbol(forCondition: weather.current.condition))
-                        .symbolRenderingMode(.multicolor)
-                        .font(.system(size: 26))
-                        .foregroundStyle(WeatherIcon.tint(forCondition: weather.current.condition))
+                    ConditionGlyph(kind: weather.current.condition, size: 34)
                     Text(formatTemp(weather.current.temperatureC))
                         .font(.system(size: 28, weight: .bold))
                         .foregroundStyle(Color.owInkPrimary)

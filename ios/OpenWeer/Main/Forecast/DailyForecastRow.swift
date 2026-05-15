@@ -2,71 +2,82 @@ import SwiftUI
 
 struct DailyForecastRow: View {
     let day: DailyForecast
+    let index: Int
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(formattedDay)
-                .font(.system(size: 13, weight: .semibold))
-                .frame(width: 56, alignment: .leading)
+            Text(dayLabel)
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color.owInkPrimary)
+                .frame(width: 64, alignment: .leading)
 
-            Image(systemName: WeatherIcon.symbol(forWmoCode: day.weatherCode))
-                .symbolRenderingMode(.multicolor)
-                .font(.system(size: 22))
-                .frame(width: 32)
-                .accessibilityHidden(true)
+            ConditionGlyph(kind: WeatherIcon.kind(forWmoCode: day.weatherCode),
+                           size: 28)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(precipText)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Color.owInkSecondary)
-                Text(windText)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Color.owInkSecondary)
+            Text(conditionLabel)
+                .font(.system(size: 14))
+                .foregroundStyle(Color.owInkSecondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let pct = day.precipitationProbabilityPct, pct >= 10 {
+                Text("\(pct)%")
+                    .font(.system(size: 12, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(Color.owAccent)
             }
-
-            Spacer()
 
             HStack(spacing: 6) {
-                Text(formatTemp(day.temperatureMinC))
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Color.owInkSecondary)
-                Text("/")
-                    .foregroundStyle(Color.owInkSecondary)
                 Text(formatTemp(day.temperatureMaxC))
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.owInkPrimary)
+                Text(formatTemp(day.temperatureMinC))
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.owInkSecondary)
             }
+            .monospacedDigit()
+            .frame(width: 76, alignment: .trailing)
         }
-        .padding(.vertical, 6)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .accessibilityElement(children: .combine)
     }
 
-    private var formattedDay: String {
-        let parsed = DateFormatter.iso8601Day.date(from: day.date)
-        guard let parsed else { return day.date }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "nl_NL")
-        formatter.dateFormat = "EEE d MMM"
-        return formatter.string(from: parsed).capitalized
-    }
-
-    private var precipText: String {
-        let mm = day.precipitationSumMm ?? 0
-        let pct = day.precipitationProbabilityPct ?? 0
-        return String(format: "%.1f mm · %d%%", mm, pct)
-    }
-
-    private var windText: String {
-        if let kph = day.windMaxKph {
-            return String(format: "%.0f km/u", kph)
+    private var dayLabel: String {
+        if index == 0 { return "Vandaag" }
+        if index == 1 { return "Morgen" }
+        guard let parsed = DateFormatter.iso8601Day.date(from: day.date) else {
+            return day.date
         }
-        return "—"
+        let comps = Calendar(identifier: .gregorian).dateComponents(
+            in: TimeZone(identifier: "Europe/Amsterdam")!,
+            from: parsed
+        )
+        let weekdayIdx = (comps.weekday ?? 1) - 1  // 1=Sun → 0
+        let weekdays = ["zo", "ma", "di", "wo", "do", "vr", "za"]
+        let wd = weekdays[max(0, min(6, weekdayIdx))]
+        let dom = comps.day ?? 0
+        return "\(wd) \(dom)"
+    }
+
+    private var conditionLabel: String {
+        switch WeatherIcon.kind(forWmoCode: day.weatherCode) {
+        case .clear:        return "Helder"
+        case .partlyCloudy: return "Half bewolkt"
+        case .cloudy:       return "Bewolkt"
+        case .fog:          return "Mist"
+        case .drizzle:      return "Motregen"
+        case .rain:         return "Regen"
+        case .thunder:      return "Onweer"
+        case .snow:         return "Sneeuw"
+        case .unknown:      return "—"
+        }
     }
 
     private func formatTemp(_ v: Double?) -> String {
         guard let v else { return "—" }
-        return String(format: "%.0f°", v)
+        return String(format: "%.0f°", v).replacingOccurrences(of: "-", with: "−")
     }
 }
 

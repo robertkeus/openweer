@@ -15,11 +15,7 @@ struct WeatherNowCard: View {
                         .foregroundStyle(Color.owInkPrimary)
                 }
                 Spacer()
-                Image(systemName: WeatherIcon.symbol(forCondition: response.current.condition))
-                    .symbolRenderingMode(.multicolor)
-                    .font(.system(size: 38))
-                    .foregroundStyle(WeatherIcon.tint(forCondition: response.current.condition))
-                    .accessibilityHidden(true)
+                ConditionGlyph(kind: response.current.condition, size: 48)
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 12) {
