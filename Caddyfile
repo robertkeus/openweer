@@ -52,6 +52,13 @@
 			}
 		}
 		reverse_proxy api:8000 {
+			# Stream SSE responses (POST /api/chat) byte-by-byte
+			# instead of letting Caddy buffer the proxy response.
+			# Without this the browser sits at "0 bytes received" for
+			# the whole chat completion duration and our frontend
+			# renders "De AI-assistent kon je vraag niet beantwoorden."
+			# Negative values flush after every write.
+			flush_interval -1
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Forwarded-For {remote_host}
 		}
