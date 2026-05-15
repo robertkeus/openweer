@@ -81,7 +81,26 @@
 		}
 	}
 
-	encode gzip zstd
+	# Compress text-ish responses. Explicitly list types so we *exclude*
+	# `text/event-stream` — gzip/zstd both need to buffer input before
+	# they can emit, which kills the per-chunk streaming the SSE chat
+	# endpoint relies on (the browser sits at "0 bytes received" until
+	# the whole answer is done). The default `text/*` match would
+	# silently sweep SSE in too.
+	encode {
+		gzip
+		zstd
+		match {
+			header Content-Type application/json*
+			header Content-Type application/javascript*
+			header Content-Type application/xhtml+xml*
+			header Content-Type text/css*
+			header Content-Type text/html*
+			header Content-Type text/plain*
+			header Content-Type text/xml*
+			header Content-Type image/svg+xml*
+		}
+	}
 	log {
 		format json
 		output stdout
