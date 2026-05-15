@@ -57,17 +57,23 @@ function translate(err: GeolocationPositionError): GeolocationError {
   switch (err.code) {
     case err.PERMISSION_DENIED:
       return new GeolocationError(
-        "Geen toestemming gekregen voor je locatie. Je kunt 'm hierboven veranderen via de plaatskiezer.",
+        "Geen toestemming gekregen voor je locatie. Kies hieronder “Niet nu” en zoek je plaats via de balk bovenaan.",
       );
     case err.POSITION_UNAVAILABLE:
+      // macOS-Chrome in particular returns this whenever Location Services
+      // is off for the browser, or CoreLocation can't get a WiFi fix.
+      // "Probeer later opnieuw" is a dead end — point the user at the
+      // search bar so they can pick a place by name instead.
       return new GeolocationError(
-        "Je locatie kon niet worden bepaald. Probeer het later opnieuw.",
+        "Je browser kon je locatie niet bepalen. Kies “Niet nu” en zoek je plaats via de balk bovenaan.",
       );
     case err.TIMEOUT:
-      return new GeolocationError("Het bepalen van je locatie duurde te lang.");
+      return new GeolocationError(
+        "Het bepalen van je locatie duurde te lang. Probeer het opnieuw, of zoek je plaats via de balk bovenaan.",
+      );
     default:
       return new GeolocationError(
-        "Er ging iets mis bij het ophalen van je locatie.",
+        "Er ging iets mis bij het ophalen van je locatie. Zoek je plaats via de balk bovenaan.",
       );
   }
 }
