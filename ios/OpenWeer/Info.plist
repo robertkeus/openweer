@@ -40,13 +40,6 @@
 	<string>OpenWeer kan je waarschuwen voordat het bij jou gaat regenen.</string>
 	<key>OPENWEER_API_BASE</key>
 	<string>$(OPENWEER_API_BASE)</string>
-	<key>UIAppFonts</key>
-	<array>
-		<string>Inter-Regular.ttf</string>
-		<string>Inter-Medium.ttf</string>
-		<string>Inter-SemiBold.ttf</string>
-		<string>Inter-Bold.ttf</string>
-	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
