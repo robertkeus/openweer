@@ -32,9 +32,8 @@ describe("WeatherNowCard", () => {
     expect(headline).toHaveTextContent("mm/u");
   });
 
-  it("uses the 'Droog' badge when no rain in the next 2h", () => {
+  it("says it stays dry when there's no rain in the next 2h", () => {
     render(<WeatherNowCard locationName="Amsterdam" rain={dryRain} />);
-    expect(screen.getByText(/Droog/)).toBeInTheDocument();
     expect(screen.getByText(/blijft droog/)).toBeInTheDocument();
   });
 
@@ -43,12 +42,31 @@ describe("WeatherNowCard", () => {
     expect(screen.getByText(/Nog geen radardata/)).toBeInTheDocument();
   });
 
-  it("uses the heavy badge when peaks exceed 5 mm/u", () => {
+  it("uses the heavy headline when peaks exceed 5 mm/u", () => {
     const stormy: RainResponse = {
       ...drizzleRain,
       samples: [sample(0, 1), sample(5, 8), sample(10, 12)],
     };
     render(<WeatherNowCard locationName="Amsterdam" rain={stormy} />);
-    expect(screen.getAllByText(/Zware buien/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Zware buien op komst/)).toBeInTheDocument();
+  });
+
+  // /api/rain returns radar nowcast (0–120 min) and HARMONIE (up to +24 h).
+  // The "Komende 2 uur" copy must ignore the HARMONIE tail — otherwise rain at
+  // +4 h would say "Matige buien op komst" above a "blijft droog" headline.
+  it("ignores samples beyond +2h when picking the headline and peak", () => {
+    const dryNowcastWetLater: RainResponse = {
+      ...drizzleRain,
+      samples: [
+        ...Array.from({ length: 25 }, (_, i) => sample(i * 5, 0)),
+        sample(180, 1.3),
+        sample(240, 2.0),
+      ],
+    };
+    render(
+      <WeatherNowCard locationName="Amsterdam" rain={dryNowcastWetLater} />,
+    );
+    expect(screen.getByText(/blijft droog/)).toBeInTheDocument();
+    expect(screen.queryByText(/op komst/)).not.toBeInTheDocument();
   });
 });
