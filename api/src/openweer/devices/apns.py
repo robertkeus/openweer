@@ -119,18 +119,42 @@ class APNsClient:
         return await send(request)  # type: ignore[operator]
 
 
+# APNs resolves `loc-key`/`title-loc-key` against the iOS *system* language,
+# which can diverge from the user's in-app language picker. We persist the
+# in-app choice in `device.language` at registration time, so localize the
+# strings server-side and send literal `title`/`body` — that's the only way
+# to honour the user's explicit preference.
+
+_TITLE: dict[str, str] = {
+    "nl": "Regen in aantocht",
+    "en": "Rain incoming",
+}
+
+_INTENSITY_LABEL: dict[str, dict[str, str]] = {
+    "nl": {"light": "lichte", "moderate": "matige", "heavy": "zware"},
+    "en": {"light": "light", "moderate": "moderate", "heavy": "heavy"},
+}
+
+_BODY_TEMPLATE: dict[str, str] = {
+    "nl": "Bij {label} start over {lead} min {intensity} regen.",
+    "en": "At {label}, {intensity} rain starts in {lead} min.",
+}
+
+
 def build_payload(alert: Alert) -> dict[str, object]:
-    """Build the APNs JSON body for a rain alert."""
+    """Build the APNs JSON body for a rain alert (pre-localized)."""
+    lang = alert.language if alert.language in _TITLE else "nl"
+    title = _TITLE[lang]
+    body = _BODY_TEMPLATE[lang].format(
+        label=alert.favorite.label,
+        lead=alert.lead_minutes,
+        intensity=_INTENSITY_LABEL[lang][alert.intensity],
+    )
     return {
         "aps": {
             "alert": {
-                "title-loc-key": "push.rain.title",
-                "loc-key": "push.rain.body",
-                "loc-args": [
-                    alert.favorite.label,
-                    str(alert.lead_minutes),
-                    alert.intensity,
-                ],
+                "title": title,
+                "body": body,
             },
             "sound": "default",
             "interruption-level": "time-sensitive",

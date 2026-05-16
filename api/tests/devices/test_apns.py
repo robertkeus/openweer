@@ -58,14 +58,59 @@ class _SendStub:
         return self.response
 
 
-def test_build_payload_shape() -> None:
+def test_build_payload_shape_nl() -> None:
     payload = build_payload(_alert())
     aps = payload["aps"]
-    assert aps["alert"]["loc-key"] == "push.rain.body"
-    assert aps["alert"]["loc-args"] == ["Home", "15", "moderate"]
+    assert aps["alert"]["title"] == "Regen in aantocht"
+    assert aps["alert"]["body"] == "Bij Home start over 15 min matige regen."
     assert aps["interruption-level"] == "time-sensitive"
     assert payload["intensity"] == "moderate"
     assert payload["lead_minutes"] == 15
+
+
+def test_build_payload_shape_en() -> None:
+    # Same alert but with the device registered as English.
+    favorite = Favorite(
+        favorite_id=1,
+        label="Home",
+        latitude=52.37,
+        longitude=4.89,
+        alert_prefs=AlertPrefs(),
+        created_at=datetime.now(UTC),
+    )
+    alert = Alert(
+        device_id="x" * 64,
+        favorite=favorite,
+        lead_minutes=30,
+        intensity="heavy",
+        mm_per_h=5.0,
+        dedupe_key="k",
+        language="en",
+    )
+    aps = build_payload(alert)["aps"]
+    assert aps["alert"]["title"] == "Rain incoming"
+    assert aps["alert"]["body"] == "At Home, heavy rain starts in 30 min."
+
+
+def test_build_payload_falls_back_to_nl_for_unknown_language() -> None:
+    favorite = Favorite(
+        favorite_id=1,
+        label="Home",
+        latitude=52.37,
+        longitude=4.89,
+        alert_prefs=AlertPrefs(),
+        created_at=datetime.now(UTC),
+    )
+    alert = Alert(
+        device_id="x" * 64,
+        favorite=favorite,
+        lead_minutes=15,
+        intensity="moderate",
+        mm_per_h=2.1,
+        dedupe_key="k",
+        language="zz",  # unknown
+    )
+    assert build_payload(alert)["aps"]["alert"]["title"] == "Regen in aantocht"
 
 
 async def test_no_config_is_a_noop() -> None:
