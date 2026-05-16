@@ -1,0 +1,29 @@
+The clearest rain radar for the Netherlands. Open, honest, ad-free. Built on the official rain and weather data from KNMI — the same source used by Dutch journalists and meteorologists.
+
+No account. No tracking. No hidden subscriptions. Just knowing whether to grab a jacket.
+
+LIVE RAIN RADAR
+See up to two hours ahead, anywhere in the Netherlands. The radar plays back at a smooth 60 fps, with a time slider that responds the way you'd expect. Zoom in to street level, zoom out to the whole of Europe.
+
+8-DAY HOURLY FORECAST
+Temperature, chance of rain, wind speed and direction — everything in one view, for any point in the country.
+
+RAIN ALERTS THAT MAKE SENSE
+One push notification just before it starts raining at your location. Not ten. OpenWeer reads the KNMI radar every five minutes and knows exactly when to ping you.
+
+WIDGETS AND LIVE ACTIVITY
+Put the weather and rain radar on your Home Screen or Lock Screen. During a shower, the Dynamic Island shows a live countdown — no need to open the app.
+
+ASK OPENWEER
+"Should I leave now to get home dry?" "Can I hang the laundry outside?" Ask in plain English and get an answer grounded in the latest measurement.
+
+PRIVACY BY DEFAULT
+• Fully open-source under the MIT license. Read the code on GitHub.
+• Weather data from KNMI (CC-BY-4.0), credited as required.
+• No account, no ads, no tracking. Your location stays on your phone.
+• No ad networks, no analytics cookies, no hidden costs.
+
+MADE IN THE NETHERLANDS
+OpenWeer is an independent project running on open data and open code — for anyone who wants to know what the weather's doing, without the noise.
+
+Ideas, issues, or pull requests welcome at github.com/openweer/openweer.

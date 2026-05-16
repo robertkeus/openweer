@@ -17,9 +17,9 @@ enum RainIntensity {
     static func color(forMmPerHour mm: Double) -> Color {
         switch mm {
         case ..<thresholds[0]:  return .owNoRain
-        case ..<thresholds[1]:  return Color(red: 200/255, green: 240/255, blue: 190/255)
-        case ..<thresholds[2]:  return Color(red: 143/255, green: 216/255, blue: 107/255)
-        case ..<thresholds[3]:  return Color(red:  79/255, green: 178/255, blue:  58/255)
+        case ..<thresholds[1]:  return Color(red: 155/255, green: 195/255, blue: 241/255)
+        case ..<thresholds[2]:  return Color(red:  92/255, green: 142/255, blue: 232/255)
+        case ..<thresholds[3]:  return Color(red:  31/255, green:  93/255, blue: 208/255)
         case ..<thresholds[4]:  return Color(red: 245/255, green: 213/255, blue:  45/255)
         case ..<thresholds[5]:  return Color(red: 245/255, green: 159/255, blue:  45/255)
         case ..<thresholds[6]:  return Color(red: 230/255, green:  53/255, blue:  61/255)

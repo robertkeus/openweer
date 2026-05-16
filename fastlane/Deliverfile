@@ -1,0 +1,27 @@
+app_identifier(ENV["APP_BUNDLE_ID"] || "nl.openweer.app")
+
+# Metadata + screenshots live under fastlane/
+metadata_path("./fastlane/metadata")
+screenshots_path("./fastlane/screenshots")
+
+# Skip binary upload — handled separately (or manually via Xcode).
+skip_binary_upload(true)
+skip_app_version_update(false)
+
+# Don't upload any of the assets we don't manage from this repo.
+skip_screenshots(false)
+skip_metadata(false)
+
+# Safer defaults for an open-source repo.
+force(false)                       # always show a preview before submission
+submit_for_review(false)           # never auto-submit to App Review
+automatic_release(false)
+phased_release(true)
+reset_ratings(false)
+
+# Our own `precheck_metadata` lane handles linting; auto-running it inside
+# deliver triggers a known api_key/api_key_path collision in fastlane 2.234.
+run_precheck_before_submit(false)
+
+# Pricing & availability are set in App Store Connect, not from this repo.
+precheck_include_in_app_purchases(false)

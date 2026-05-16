@@ -1,0 +1,28 @@
+devices([
+  "iPhone 17 Pro Max",        # 6.9" — required by App Store as of 2024
+  "iPad Air 13-inch (M3)",    # 13" — required by App Store for iPad
+])
+
+languages([
+  "nl-NL",
+  "en-US",
+])
+
+scheme("OpenWeerSnapshots")
+
+project("./ios/OpenWeer.xcodeproj")
+
+output_directory("./fastlane/screenshots")
+
+clear_previous_screenshots(true)
+
+override_status_bar(true)        # clean 9:41 / full battery / wifi
+localize_simulator(true)
+
+stop_after_first_error(true)
+concurrent_simulators(false)     # status-bar override doesn't play nice with parallel sims
+
+# Disabled — when true, snapshot drops an xcresult bundle into
+# fastlane/screenshots/test_output/, and deliver then rejects the screenshots
+# upload because it can't parse "test_output" as a locale dir.
+result_bundle(false)

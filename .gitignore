@@ -43,5 +43,16 @@ data/
 # Local Docker overrides
 docker-compose.override.yml
 
+# Ruby / Fastlane
+vendor/bundle/
+.bundle/
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/screenshots.html
+fastlane/test_output/
+fastlane/builds/
+# Personal contact info for Apple App Review — not for a public repo.
+fastlane/metadata/review_information/
+
 # Claude Code runtime artifacts
 .claude/scheduled_tasks.lock

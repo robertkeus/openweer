@@ -49,6 +49,38 @@ final class PushService: NSObject, UNUserNotificationCenterDelegate {
         log.error("APNs registration failed: \(error.localizedDescription)")
     }
 
+    /// Current iOS notification authorization status for the app.
+    func currentAuthorizationStatus() async -> UNAuthorizationStatus {
+        await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+    }
+
+    enum EnableResult {
+        /// Permission granted and `registerForRemoteNotifications` was kicked off.
+        case enabled
+        /// User declined the system prompt this run.
+        case denied
+        /// Previously denied — caller must guide the user to iOS Settings.
+        case needsSystemSettings
+    }
+
+    /// Turning the in-app toggle ON. Handles the three states (not yet asked,
+    /// granted, previously denied) so the UI can show the right affordance.
+    func enableFromSettings() async -> EnableResult {
+        let status = await currentAuthorizationStatus()
+        switch status {
+        case .notDetermined:
+            let granted = await requestAuthorizationAndRegister()
+            return granted ? .enabled : .denied
+        case .denied:
+            return .needsSystemSettings
+        case .authorized, .provisional, .ephemeral:
+            UIApplication.shared.registerForRemoteNotifications()
+            return .enabled
+        @unknown default:
+            return .denied
+        }
+    }
+
     /// Called when the user denies notifications or signs out. Best-effort
     /// — failure is non-fatal because the next push attempt will surface a
     /// terminal token and the backend will drop the row anyway.
@@ -80,6 +112,6 @@ enum AppStateLanguageProvider {
            let lang = LanguagePreference(rawValue: raw) {
             return lang
         }
-        return .nl
+        return .systemDefault
     }
 }

@@ -1,0 +1,6 @@
+Eerste release van OpenWeer:
+• Live regenradar met soepele tijdslider
+• 8-daagse verwachting per uur
+• Push-waarschuwing voordat het bij jou gaat regenen
+• Widgets en Live Activity
+• Volledig open-source, gebouwd op KNMI open data

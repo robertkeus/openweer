@@ -7,9 +7,7 @@ struct NotificationsScreen: View {
     var body: some View {
         VStack(spacing: 32) {
             Spacer()
-            Image(systemName: "cloud.rain.fill")
-                .font(.system(size: 64, weight: .light))
-                .foregroundStyle(Color.owAccent)
+            ConditionGlyph(kind: .rain, size: 96)
             VStack(spacing: 12) {
                 Text("push.title", bundle: .main)
                     .font(.system(size: 28, weight: .bold))

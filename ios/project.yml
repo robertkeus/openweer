@@ -190,6 +190,20 @@ targets:
         TEST_TARGET_NAME: OpenWeer
         GENERATE_INFOPLIST_FILE: YES
 
+  # Dedicated UI-test target for fastlane `snapshot`. Kept separate from
+  # OpenWeerUITests so the regular test suite stays fast and doesn't pull in
+  # SnapshotHelper.swift's screenshot-export side effects.
+  OpenWeerSnapshots:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: OpenWeerSnapshots
+    dependencies:
+      - target: OpenWeer
+    settings:
+      base:
+        TEST_TARGET_NAME: OpenWeer
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   OpenWeer:
     build:
@@ -210,3 +224,19 @@ schemes:
       config: Release
     analyze:
       config: Debug
+
+  # Scheme that fastlane `snapshot` drives. Builds the app + the snapshots-only
+  # UI-test target; running the test capture produces the App Store screenshots.
+  OpenWeerSnapshots:
+    build:
+      targets:
+        OpenWeer: all
+        OpenWeerSnapshots: [test]
+    test:
+      config: Debug
+      targets:
+        - OpenWeerSnapshots
+    run:
+      config: Debug
+    archive:
+      config: Release

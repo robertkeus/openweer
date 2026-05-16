@@ -1,0 +1,29 @@
+De helderste buienradar van Nederland. Open, eerlijk en zonder advertenties. Gebouwd op de officiële regen- en weerdata van het KNMI — dezelfde bron die journalisten en meteorologen gebruiken.
+
+Geen account. Geen tracking. Geen verborgen abonnementen. Gewoon weten of je een jas mee moet.
+
+LIVE REGENRADAR
+Zie tot twee uur vooruit waar het regent. De radar speelt vloeiend af op 60 beelden per seconde, met een tijdslider die snapt wat je bedoelt. Inzoomen tot op straatniveau, uitzoomen tot heel Europa.
+
+8-DAAGSE VERWACHTING PER UUR
+Temperatuur, neerslagkans, windsnelheid en windrichting — alles in één oogopslag. Voor elke plek in Nederland.
+
+REGENMELDING DIE WERKT
+Eén pushmelding net vóór het bij jou begint te regenen. Niet tien. OpenWeer kijkt elke vijf minuten naar het radarbeeld en weet precies wanneer het tijd is.
+
+WIDGETS EN LIVE ACTIVITY
+Zet het weer en de regenradar op je beginscherm of lockscreen. Tijdens een bui verschijnt in het dynamische eiland een live aftelling — zonder de app te openen.
+
+VRAAG HET OPENWEER
+"Moet ik nu vertrekken om droog thuis te komen?" "Wanneer kan ik de was buiten hangen?" Stel je vraag in gewoon Nederlands, krijg meteen antwoord op basis van de actuele meting.
+
+PRIVACY ALS UITGANGSPUNT
+• Volledig open-source onder MIT-licentie. De broncode staat op GitHub.
+• Weerdata van het KNMI (CC-BY-4.0), netjes met bronvermelding.
+• Geen account, geen advertenties, geen tracking. Jouw locatie blijft op jouw telefoon.
+• Geen reclamebureaus, geen analytics-cookies, geen verborgen kosten.
+
+GEMAAKT IN NEDERLAND
+OpenWeer is een onafhankelijk project dat draait op open data en open code. Bedoeld voor wie wil weten wat het weer doet, zonder reclame, zonder fratsen.
+
+Suggesties, meldingen of bijdragen zijn welkom op github.com/openweer/openweer.

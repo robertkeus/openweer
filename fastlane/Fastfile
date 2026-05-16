@@ -1,0 +1,105 @@
+# OpenWeer — App Store automation.
+#
+# Secrets are loaded from ./secrets/.env.fastlane (gitignored). Never commit
+# anything from ./secrets/. Copy ./secrets/.env.fastlane.example to get started.
+#
+# Lanes:
+#   bundle exec fastlane ios screenshots        — generate App Store screenshots
+#   bundle exec fastlane ios upload_metadata    — push metadata + screenshots
+#   bundle exec fastlane ios release_metadata   — full dry-run (precheck + deliver)
+#
+# Code signing and binary upload are intentionally out of scope here so this
+# repo stays free of provisioning profiles and certs. Archive + upload the
+# build from Xcode (Product → Archive → Distribute App), or wire up `match` +
+# `gym` later against a private cert repo.
+
+default_platform(:ios)
+
+# Prevent fastlane from clobbering our hand-written fastlane/README.md with
+# its auto-generated lane index after each run.
+skip_docs
+
+# Load ./secrets/.env.fastlane first, then fall back to the project-root .env
+# so APNs config (notably APNS_TEAM_ID) is reused instead of duplicated.
+# Dotenv.load does not overwrite already-set keys, so the secrets file wins.
+require "dotenv"
+fastlane_env = File.expand_path("../secrets/.env.fastlane", __dir__)
+project_env  = File.expand_path("../.env",                  __dir__)
+Dotenv.load(fastlane_env) if File.exist?(fastlane_env)
+Dotenv.load(project_env)  if File.exist?(project_env)
+
+# Reuse the APNs team id if APPLE_TEAM_ID isn't explicitly set — same Apple
+# Developer Team owns both the APNs key and the App Store Connect record.
+ENV["APPLE_TEAM_ID"] ||= ENV["APNS_TEAM_ID"]
+
+# Silence the locale warning that fastlane emits on macOS shells without UTF-8.
+ENV["LANG"]   ||= "en_US.UTF-8"
+ENV["LC_ALL"] ||= "en_US.UTF-8"
+
+# `xcodebuild -showBuildSettings` defaults to a 3s timeout — too short for any
+# project that pulls in SPM packages (MapLibre takes ~20s to resolve cold).
+ENV["FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT"] ||= "120"
+ENV["FASTLANE_XCODEBUILD_SETTINGS_RETRIES"] ||= "4"
+
+def app_store_connect_key
+  required = %w[
+    APP_STORE_CONNECT_API_KEY_ID
+    APP_STORE_CONNECT_API_KEY_ISSUER_ID
+    APP_STORE_CONNECT_API_KEY_PATH
+  ]
+  missing = required.reject { |k| ENV[k] && !ENV[k].empty? }
+  UI.user_error!(
+    "Missing App Store Connect credentials: #{missing.join(', ')}. " \
+    "Copy ./secrets/.env.fastlane.example to ./secrets/.env.fastlane and fill it in."
+  ) unless missing.empty?
+
+  app_store_connect_api_key(
+    key_id:        ENV.fetch("APP_STORE_CONNECT_API_KEY_ID"),
+    issuer_id:     ENV.fetch("APP_STORE_CONNECT_API_KEY_ISSUER_ID"),
+    key_filepath:  ENV.fetch("APP_STORE_CONNECT_API_KEY_PATH"),
+    in_house:      false,
+  )
+end
+
+platform :ios do
+  before_all do
+    # Make sure the Xcode project is in sync with project.yml before any lane.
+    sh("cd .. && xcodegen generate --spec ios/project.yml --project ios")
+  end
+
+  desc "Generate App Store screenshots for every device × locale defined in Snapfile."
+  lane :screenshots do
+    capture_ios_screenshots
+  end
+
+  desc "Lint metadata against App Store rules (no upload)."
+  lane :precheck_metadata do
+    precheck(
+      api_key:                   app_store_connect_key,
+      default_rule_level:        :warn,
+      # API-key auth can't read IAP metadata yet; skip to avoid a hard failure.
+      include_in_app_purchases:  false,
+    )
+  end
+
+  desc "Upload metadata + screenshots to App Store Connect (preview before commit)."
+  desc "Options:  skip_screenshots:true  force:true"
+  lane :upload_metadata do |options|
+    deliver(
+      api_key:           app_store_connect_key,
+      skip_screenshots:  options.fetch(:skip_screenshots, false),
+      force:             options.fetch(:force, false),
+    )
+  end
+
+  desc "Full release pipeline (screenshots → precheck → upload). Still requires manual review submit."
+  lane :release_metadata do
+    capture_ios_screenshots
+    precheck(
+      api_key:                  app_store_connect_key,
+      default_rule_level:       :warn,
+      include_in_app_purchases: false,
+    )
+    deliver(api_key: app_store_connect_key)
+  end
+end

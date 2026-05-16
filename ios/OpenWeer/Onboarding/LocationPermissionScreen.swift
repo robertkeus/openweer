@@ -9,9 +9,7 @@ struct LocationPermissionScreen: View {
     var body: some View {
         VStack(spacing: 32) {
             Spacer()
-            Image(systemName: "location.viewfinder")
-                .font(.system(size: 64, weight: .light))
-                .foregroundStyle(Color.owAccent)
+            ConditionGlyph(kind: .clear, size: 96)
             VStack(spacing: 12) {
                 Text("location.title", bundle: .main)
                     .font(.system(size: 28, weight: .bold))

@@ -19,6 +19,10 @@ enum ThemePreference: String, CaseIterable, Identifiable {
 enum LanguagePreference: String, CaseIterable, Identifiable {
     case nl, en
     var id: String { rawValue }
+
+    static var systemDefault: LanguagePreference {
+        Locale.current.language.languageCode?.identifier == "nl" ? .nl : .en
+    }
 }
 
 /// User-selectable forecast horizon. +2h is the radar-only nowcast horizon;
@@ -38,6 +42,13 @@ final class AppState {
     }
     var language: LanguagePreference {
         didSet { UserDefaults.standard.set(language.rawValue, forKey: "language") }
+    }
+    /// User-facing toggle for rain push notifications. Mirrors but is
+    /// independent of the iOS system permission — turning this off triggers
+    /// `PushService.unsubscribe()` so the backend stops pushing for this
+    /// device, even while the system permission stays granted.
+    var pushEnabled: Bool {
+        didSet { UserDefaults.standard.set(pushEnabled, forKey: "pushEnabled") }
     }
 
     var coordinate: CLLocationCoordinate2D {
@@ -78,10 +89,19 @@ final class AppState {
         self.theme = storedTheme ?? .system
 
         let storedLang = UserDefaults.standard.string(forKey: "language").flatMap(LanguagePreference.init(rawValue:))
-        self.language = storedLang ?? .nl
+        self.language = storedLang ?? .systemDefault
 
         let storedHorizon = ForecastHorizon(rawValue: UserDefaults.standard.integer(forKey: "forecastHorizon"))
         self.forecastHorizon = storedHorizon ?? .default
+
+        // Default to true on first launch — the onboarding flow asks for
+        // permission explicitly; if the user denied there, the system
+        // permission gate keeps pushes off anyway.
+        if UserDefaults.standard.object(forKey: "pushEnabled") == nil {
+            self.pushEnabled = true
+        } else {
+            self.pushEnabled = UserDefaults.standard.bool(forKey: "pushEnabled")
+        }
 
         let amsterdam = KnownLocations.all.first { $0.slug == "amsterdam" }!
         self.coordinate = amsterdam.coordinate

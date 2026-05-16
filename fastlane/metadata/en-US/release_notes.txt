@@ -1,0 +1,6 @@
+First release of OpenWeer:
+• Live rain radar with a smooth time slider
+• 8-day hourly forecast
+• Push alert before it starts raining at your location
+• Widgets and Live Activity
+• Fully open-source, built on KNMI open data

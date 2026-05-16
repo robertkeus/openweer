@@ -1,0 +1,2 @@
+app_identifier(ENV["APP_BUNDLE_ID"] || "nl.openweer.app")
+team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"] && !ENV["APPLE_TEAM_ID"].empty?
