@@ -22,9 +22,9 @@ export function RainLegend() {
 }
 
 const STOPS: ReadonlyArray<readonly [string]> = [
-  ["rgb(200,240,190)"],
-  ["rgb(143,216,107)"],
-  ["rgb(79,178,58)"],
+  ["rgb(155,195,241)"],
+  ["rgb(92,142,232)"],
+  ["rgb(31,93,208)"],
   ["rgb(245,213,45)"],
   ["rgb(245,159,45)"],
   ["rgb(230,53,61)"],

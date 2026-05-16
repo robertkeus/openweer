@@ -306,9 +306,9 @@ function pctForIndex(index: number, count: number): number {
 function colorFor(mm: number): string {
   // Mirrors RainGraph + backend colormap stops.
   if (mm < 0.1) return "var(--color-no-rain)";
-  if (mm < 0.5) return "rgb(200,240,190)";
-  if (mm < 1.0) return "rgb(143,216,107)";
-  if (mm < 2.0) return "rgb(79,178,58)";
+  if (mm < 0.5) return "rgb(155,195,241)";
+  if (mm < 1.0) return "rgb(92,142,232)";
+  if (mm < 2.0) return "rgb(31,93,208)";
   if (mm < 5.0) return "rgb(245,213,45)";
   if (mm < 10.0) return "rgb(245,159,45)";
   if (mm < 20.0) return "rgb(230,53,61)";
