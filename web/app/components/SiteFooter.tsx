@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+
 export function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-[--color-ink-100]/60">
@@ -23,7 +25,22 @@ export function SiteFooter() {
           </a>
           . OpenWeer is open source onder MIT.
         </p>
-        <p>
+        <nav
+          aria-label="Voettekst"
+          className="flex flex-wrap items-center gap-x-4 gap-y-2"
+        >
+          <Link
+            to="/privacy"
+            className="underline underline-offset-2 hover:text-[--color-ink-900]"
+          >
+            Privacy
+          </Link>
+          <Link
+            to="/terms"
+            className="underline underline-offset-2 hover:text-[--color-ink-900]"
+          >
+            Voorwaarden
+          </Link>
           <a
             href="https://github.com/robertkeus/openweer"
             target="_blank"
@@ -32,7 +49,7 @@ export function SiteFooter() {
           >
             github.com/robertkeus/openweer
           </a>
-        </p>
+        </nav>
       </div>
     </footer>
   );
