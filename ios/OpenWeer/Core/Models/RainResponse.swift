@@ -25,6 +25,25 @@ struct RainResponse: Codable, Hashable, Sendable {
 
     /// Will any sample exceed `threshold` mm/h within the next `withinMinutes`?
     func willRain(withinMinutes: Int = 30, threshold: Double = 0.5) -> Bool {
-        samples.contains { $0.minutesAhead <= withinMinutes && $0.mmPerHour >= threshold }
+        samples.contains {
+            $0.minutesAhead > 0 &&
+            $0.minutesAhead <= withinMinutes &&
+            $0.mmPerHour >= threshold
+        }
+    }
+
+    /// Short go/no-go for stepping outside in the next `withinMinutes`.
+    func outsideVerdict(now: Date = Date(),
+                        withinMinutes: Int = 15,
+                        threshold: Double = 0.2) -> String {
+        let horizon = now.addingTimeInterval(TimeInterval(withinMinutes * 60))
+        let rainy = samples.contains { sample in
+            sample.validAt >= now &&
+            sample.validAt <= horizon &&
+            sample.mmPerHour >= threshold
+        }
+        return rainy
+            ? "Pak een paraplu mee"
+            : "Droog komende \(withinMinutes) min"
     }
 }

@@ -19,11 +19,12 @@ enum WeatherIcon {
     }
 }
 
-/// SwiftUI port of the web's `ConditionGlyph` SVG. We draw a stroked cloud
-/// + condition-specific accents instead of using SF Symbols, because the
-/// system cloud glyphs are themselves white and disappear against the white
-/// `owSurfaceCard` background. The dark stroke keeps the silhouette readable
-/// on any surface.
+/// Custom weather glyph that draws an outlined cloud + condition-specific
+/// accents. SF Symbols' `cloud.fill` is itself white and disappears on the
+/// `owSurfaceCard` background; this gives a strong silhouette by stacking
+/// three filled circles on top of three stroked ones — the inner stroke
+/// crossings get hidden behind the upper fills, leaving only the outer
+/// perimeter visible as a single clean outline.
 struct ConditionGlyph: View {
     let kind: ConditionKind
     let size: CGFloat
@@ -40,210 +41,263 @@ struct ConditionGlyph: View {
 
     @ViewBuilder
     private var sunLayer: some View {
-        if kind == .clear || kind == .partlyCloudy {
-            SunDisc()
-                .fill(RadialGradient(
-                    colors: [
-                        Color(red: 1.00, green: 0.96, blue: 0.62),
-                        Color.owSun,
-                    ],
-                    center: UnitPoint(x: 0.5, y: 0.4375),
-                    startRadius: 0,
-                    endRadius: size * 0.22
-                ))
-            SunRays()
-                .stroke(Color.owSun.opacity(0.85),
-                        style: StrokeStyle(lineWidth: max(1, size / 32),
-                                           lineCap: .round))
+        switch kind {
+        case .clear:
+            SunWithRays(size: size,
+                        centerX: 32, centerY: 28,
+                        discR: 12, rayLen: 8.5, rayWidth: 3,
+                        rayCount: 8)
+        case .partlyCloudy:
+            // Tucked into the upper-left so the cloud (drawn after) covers
+            // only the right-side rays — what remains visible reads as a
+            // sun peeking out from behind a cloud.
+            SunWithRays(size: size,
+                        centerX: 18, centerY: 20,
+                        discR: 7.5, rayLen: 5.5, rayWidth: 2.4,
+                        rayCount: 8)
+        default:
+            EmptyView()
         }
     }
 
     @ViewBuilder
     private var cloudLayer: some View {
-        if kind != .clear {
-            CloudShape()
-                .fill(LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.98),
-                        Color(red: 0.82, green: 0.84, blue: 0.87).opacity(0.95),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ))
-            CloudShape()
-                .stroke(Color(red: 0.55, green: 0.58, blue: 0.62),
-                        lineWidth: max(0.6, size / 50))
+        switch kind {
+        case .clear:
+            EmptyView()
+        case .partlyCloudy:
+            CloudCluster(size: size, shifted: true)
+        default:
+            CloudCluster(size: size, shifted: false)
         }
     }
 
     @ViewBuilder
     private var accentLayer: some View {
         switch kind {
-        case .rain:
-            RainDrops(small: false)
-                .stroke(Color.owAccent,
-                        style: StrokeStyle(lineWidth: max(1, size / 32),
-                                           lineCap: .round))
-        case .drizzle:
-            RainDrops(small: true)
-                .stroke(Color.owAccent.opacity(0.85),
-                        style: StrokeStyle(lineWidth: max(0.8, size / 42),
-                                           lineCap: .round))
-        case .snow:
-            SnowDots()
-                .fill(Color.owInkSecondary)
-        case .thunder:
-            LightningShape()
+        case .rain:    RainAccents(size: size, intense: true)
+        case .drizzle: RainAccents(size: size, intense: false)
+        case .snow:    SnowDots(size: size)
+        case .thunder: Lightning(size: size)
+        case .fog:     FogBars(size: size)
+        default:       EmptyView()
+        }
+    }
+}
+
+// MARK: - Sun
+
+private struct SunWithRays: View {
+    let size: CGFloat
+    let centerX: CGFloat   // in 64-unit design space
+    let centerY: CGFloat
+    let discR: CGFloat
+    let rayLen: CGFloat
+    let rayWidth: CGFloat
+    let rayCount: Int
+
+    var body: some View {
+        let s = size / 64
+        let extent = (discR + rayLen + 2) * 2 * s
+        ZStack {
+            ForEach(0..<rayCount, id: \.self) { i in
+                Capsule()
+                    .fill(Color.owSun)
+                    .frame(width: rayWidth * s, height: rayLen * s)
+                    .offset(y: -(discR + rayLen * 0.55) * s)
+                    .rotationEffect(.degrees(Double(i) * 360.0 / Double(rayCount)))
+            }
+            Circle()
+                .fill(RadialGradient(
+                    colors: [
+                        Color(red: 1.00, green: 0.97, blue: 0.50),
+                        Color.owSun,
+                    ],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: discR * s
+                ))
+                .frame(width: discR * 2 * s, height: discR * 2 * s)
+        }
+        .frame(width: extent, height: extent)
+        .position(x: centerX * s, y: centerY * s)
+    }
+}
+
+// MARK: - Cloud
+
+private struct CloudCluster: View {
+    let size: CGFloat
+    /// `true` for partly-cloudy — shifts the cloud down-right so the sun
+    /// (drawn earlier in the ZStack, upper-left) peeks above it.
+    let shifted: Bool
+
+    var body: some View {
+        let s = size / 64
+        // (cx, cy, r) for each lobe in the 64-unit design space.
+        let lobes: [(CGFloat, CGFloat, CGFloat)] = shifted
+            ? [(30, 44, 10), (48, 44, 10), (38, 30, 11)]
+            : [(22, 40, 12), (42, 40, 12), (32, 26, 13)]
+
+        let stroke = Color(red: 0.30, green: 0.34, blue: 0.40)
+        let lineWidth = max(3.0, size / 10)
+        let fill = Color.white
+
+        return ZStack {
+            // Stroke pass: outer half of each ring extends just beyond the
+            // geometric edge of its lobe. Inner stroke crossings are hidden
+            // by the fill pass below.
+            ForEach(lobes.indices, id: \.self) { i in
+                Circle()
+                    .stroke(stroke, lineWidth: lineWidth)
+                    .frame(width: lobes[i].2 * 2 * s,
+                           height: lobes[i].2 * 2 * s)
+                    .position(x: lobes[i].0 * s, y: lobes[i].1 * s)
+            }
+            // Fill pass: each disc covers up to its own edge, hiding the
+            // strokes of overlapping lobes in the interior.
+            ForEach(lobes.indices, id: \.self) { i in
+                Circle()
+                    .fill(fill)
+                    .frame(width: lobes[i].2 * 2 * s,
+                           height: lobes[i].2 * 2 * s)
+                    .position(x: lobes[i].0 * s, y: lobes[i].1 * s)
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+// MARK: - Rain / drizzle
+
+private struct RainAccents: View {
+    let size: CGFloat
+    /// `true` = rain (larger, fully-saturated drops); `false` = drizzle.
+    let intense: Bool
+
+    var body: some View {
+        let s = size / 64
+        let positions: [CGFloat] = [20, 32, 44]
+        let dropW: CGFloat = intense ? 5 : 3.6
+        let dropH: CGFloat = intense ? 10 : 7
+        let yCenter: CGFloat = intense ? 57 : 56
+        let color = intense ? Color.owAccent : Color.owAccent.opacity(0.85)
+
+        return ZStack {
+            ForEach(positions.indices, id: \.self) { i in
+                Teardrop()
+                    .fill(color)
+                    .frame(width: dropW * s, height: dropH * s)
+                    .rotationEffect(.degrees(18))
+                    .position(x: positions[i] * s, y: yCenter * s)
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+/// Pointed top, round bottom — like a falling rain drop. Traced as four
+/// cubic Béziers so the corner at the top stays crisp.
+private struct Teardrop: Shape {
+    func path(in rect: CGRect) -> Path {
+        let w = rect.width
+        let h = rect.height
+        let cx = rect.midX
+        let midY = rect.minY + h * 0.65
+        var p = Path()
+        p.move(to: CGPoint(x: cx, y: rect.minY))
+        p.addCurve(
+            to: CGPoint(x: rect.maxX, y: midY),
+            control1: CGPoint(x: cx + w * 0.20, y: rect.minY + h * 0.12),
+            control2: CGPoint(x: rect.maxX, y: rect.minY + h * 0.35)
+        )
+        p.addCurve(
+            to: CGPoint(x: cx, y: rect.maxY),
+            control1: CGPoint(x: rect.maxX, y: rect.maxY),
+            control2: CGPoint(x: cx + w * 0.40, y: rect.maxY)
+        )
+        p.addCurve(
+            to: CGPoint(x: rect.minX, y: midY),
+            control1: CGPoint(x: cx - w * 0.40, y: rect.maxY),
+            control2: CGPoint(x: rect.minX, y: rect.maxY)
+        )
+        p.addCurve(
+            to: CGPoint(x: cx, y: rect.minY),
+            control1: CGPoint(x: rect.minX, y: rect.minY + h * 0.35),
+            control2: CGPoint(x: cx - w * 0.20, y: rect.minY + h * 0.12)
+        )
+        p.closeSubpath()
+        return p
+    }
+}
+
+// MARK: - Snow / Thunder / Fog
+
+private struct SnowDots: View {
+    let size: CGFloat
+    private let positions: [(CGFloat, CGFloat)] = [(20, 56), (32, 58), (44, 56)]
+
+    var body: some View {
+        let s = size / 64
+        ZStack {
+            ForEach(positions.indices, id: \.self) { i in
+                Circle()
+                    .fill(Color.owInkSecondary)
+                    .frame(width: 4 * s, height: 4 * s)
+                    .position(x: positions[i].0 * s, y: positions[i].1 * s)
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+private struct Lightning: View {
+    let size: CGFloat
+
+    var body: some View {
+        let s = size / 64
+        ZStack {
+            BoltShape()
                 .fill(Color.owSun)
-            LightningShape()
-                .stroke(Color(red: 0.62, green: 0.42, blue: 0.16),
-                        lineWidth: max(0.5, size / 80))
-        case .fog:
-            FogLines()
-                .stroke(Color.owInkSecondary,
-                        style: StrokeStyle(lineWidth: max(0.8, size / 40),
-                                           lineCap: .round))
-        case .clear, .partlyCloudy, .cloudy, .unknown:
-            EmptyView()
+                .frame(width: 12 * s, height: 17 * s)
+                .position(x: 32 * s, y: 56 * s)
         }
+        .frame(width: size, height: size)
     }
 }
 
-// MARK: - Shapes (64×64 design coordinate space, scaled to bounds)
-
-private struct SunDisc: Shape {
+private struct BoltShape: Shape {
     func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / 64
-        let r = 11 * s
-        let cx = rect.minX + 32 * s
-        let cy = rect.minY + 28 * s
-        return Path(ellipseIn: CGRect(x: cx - r, y: cy - r,
-                                      width: r * 2, height: r * 2))
+        let w = rect.width
+        let h = rect.height
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX + w * 0.58, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.minX,             y: rect.minY + h * 0.52))
+        p.addLine(to: CGPoint(x: rect.minX + w * 0.42,  y: rect.minY + h * 0.52))
+        p.addLine(to: CGPoint(x: rect.minX + w * 0.22,  y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.maxX,             y: rect.minY + h * 0.42))
+        p.addLine(to: CGPoint(x: rect.minX + w * 0.50,  y: rect.minY + h * 0.42))
+        p.addLine(to: CGPoint(x: rect.maxX - w * 0.05,  y: rect.minY))
+        p.closeSubpath()
+        return p
     }
 }
 
-private struct SunRays: Shape {
-    func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / 64
-        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-            CGPoint(x: rect.minX + x * s, y: rect.minY + y * s)
-        }
-        var path = Path()
-        let rays: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [
-            (32,  6, 32, 11),
-            (50, 28, 55, 28),
-            ( 9, 28, 14, 28),
-            (46, 14, 50, 10),
-            (18, 14, 14, 10),
-        ]
-        for (x1, y1, x2, y2) in rays {
-            path.move(to: p(x1, y1))
-            path.addLine(to: p(x2, y2))
-        }
-        return path
-    }
-}
+private struct FogBars: View {
+    let size: CGFloat
 
-private struct CloudShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / 64
-        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-            CGPoint(x: rect.minX + x * s, y: rect.minY + y * s)
+    var body: some View {
+        let s = size / 64
+        ZStack {
+            Capsule()
+                .fill(Color.owInkSecondary)
+                .frame(width: 32 * s, height: 2.4 * s)
+                .position(x: 26 * s, y: 56 * s)
+            Capsule()
+                .fill(Color.owInkSecondary)
+                .frame(width: 32 * s, height: 2.4 * s)
+                .position(x: 30 * s, y: 60 * s)
         }
-        var path = Path()
-        path.move(to: p(14, 50))
-        // bottom edge, sweeping left → right under the cloud
-        path.addCurve(to: p(36, 50),
-                      control1: p(20, 60),
-                      control2: p(30, 60))
-        // right side / bottom-right lobe
-        path.addCurve(to: p(50, 44),
-                      control1: p(43, 53),
-                      control2: p(50, 52))
-        // top-right lobe
-        path.addCurve(to: p(42, 30),
-                      control1: p(56, 36),
-                      control2: p(52, 26))
-        // top peak (highest lobe)
-        path.addCurve(to: p(22, 28),
-                      control1: p(34, 16),
-                      control2: p(26, 16))
-        // upper-left descent
-        path.addCurve(to: p(12, 38),
-                      control1: p(14, 28),
-                      control2: p(10, 32))
-        // left side back to start
-        path.addCurve(to: p(14, 50),
-                      control1: p(8, 46),
-                      control2: p(8, 50))
-        path.closeSubpath()
-        return path
-    }
-}
-
-private struct RainDrops: Shape {
-    let small: Bool
-    func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / 64
-        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-            CGPoint(x: rect.minX + x * s, y: rect.minY + y * s)
-        }
-        let drops: [(CGFloat, CGFloat, CGFloat, CGFloat)] = small
-            ? [(20, 54, 19, 58), (28, 54, 27, 58), (36, 54, 35, 58)]
-            : [(20, 54, 18, 60), (28, 54, 26, 60), (36, 54, 34, 60)]
-        var path = Path()
-        for (x1, y1, x2, y2) in drops {
-            path.move(to: p(x1, y1))
-            path.addLine(to: p(x2, y2))
-        }
-        return path
-    }
-}
-
-private struct SnowDots: Shape {
-    func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / 64
-        let r = 1.4 * s
-        var path = Path()
-        for (cx, cy) in [(20.0, 56.0), (28.0, 58.0), (36.0, 56.0)] {
-            path.addEllipse(in: CGRect(
-                x: rect.minX + CGFloat(cx) * s - r,
-                y: rect.minY + CGFloat(cy) * s - r,
-                width: r * 2, height: r * 2
-            ))
-        }
-        return path
-    }
-}
-
-private struct LightningShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / 64
-        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-            CGPoint(x: rect.minX + x * s, y: rect.minY + y * s)
-        }
-        var path = Path()
-        path.move(to: p(30, 50))
-        path.addLine(to: p(27, 57))
-        path.addLine(to: p(31, 57))
-        path.addLine(to: p(29, 63))
-        path.addLine(to: p(36, 54))
-        path.addLine(to: p(32, 54))
-        path.addLine(to: p(34, 50))
-        path.closeSubpath()
-        return path
-    }
-}
-
-private struct FogLines: Shape {
-    func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / 64
-        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-            CGPoint(x: rect.minX + x * s, y: rect.minY + y * s)
-        }
-        var path = Path()
-        path.move(to: p(10, 56)); path.addLine(to: p(42, 56))
-        path.move(to: p(14, 60)); path.addLine(to: p(46, 60))
-        return path
+        .frame(width: size, height: size)
     }
 }

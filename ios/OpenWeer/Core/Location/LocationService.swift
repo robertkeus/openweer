@@ -69,6 +69,25 @@ final class LocationService: NSObject {
         }
     }
 
+    /// Reverse-geocode an arbitrary coordinate. Used by the pan-to-set
+    /// flow; does not touch `lastCoordinate` / `lastPlaceName` (those are
+    /// reserved for the GPS path). Returns nil if the geocoder yields
+    /// nothing usable — callers can fall back to a coordinate label.
+    func resolvePlaceName(for coord: CLLocationCoordinate2D) async -> String? {
+        let location = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
+        do {
+            let placemarks = try await geocoder.reverseGeocodeLocation(location)
+            guard let p = placemarks.first else { return nil }
+            return p.locality
+                ?? p.subAdministrativeArea
+                ?? p.administrativeArea
+                ?? p.country
+        } catch {
+            log.error("reverse geocode (pan) failed: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     private func reverseGeocode(_ coord: CLLocationCoordinate2D) async {
         let location = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
         do {
@@ -104,6 +123,8 @@ extension LocationService: CLLocationManagerDelegate {
                 self.lastCoordinate = coord
                 self.log.debug("got coord \(coord.latitude),\(coord.longitude)")
                 await self.reverseGeocode(coord)
+                SharedLocation.save(coordinate: coord,
+                                    name: self.lastPlaceName ?? "Mijn locatie")
                 self.pendingContinuation?.resume(returning: coord)
             } else {
                 self.log.info("coord outside NL bbox; ignored")

@@ -31,6 +31,10 @@ targets:
       - path: OpenWeer
         excludes:
           - "**/.DS_Store"
+      # Pure helpers also compiled into the widget extension; included here
+      # so the OpenWeerTests target (which loads the app binary) can test them.
+      - path: OpenWeerWidgets/Provider/WidgetRefreshPolicy.swift
+      - path: OpenWeerWidgets/RainNowcast/RainBarChart.swift
     resources:
       - OpenWeer/Resources
     info:
@@ -55,6 +59,7 @@ targets:
         UIBackgroundModes:
           - remote-notification
           - fetch
+        NSSupportsLiveActivities: true
         ITSAppUsesNonExemptEncryption: false
         UIAppFonts:
           - Inter-Regular.ttf
@@ -78,9 +83,10 @@ targets:
         DEVELOPMENT_TEAM: ""
         SWIFT_OBJC_BRIDGING_HEADER: ""
         GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: OpenWeer/OpenWeer.entitlements
       configs:
         Debug:
-          OPENWEER_API_BASE: http://localhost:8000
+          OPENWEER_API_BASE: https://openweer.nl
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG OPENWEER_DEV
           INFOPLIST_PREPROCESS: NO
         Release:
@@ -90,6 +96,75 @@ targets:
     dependencies:
       - package: MapLibre
         product: MapLibre
+      - target: OpenWeerWidgets
+
+  OpenWeerWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: OpenWeerWidgets
+        excludes:
+          - "**/.DS_Store"
+      # Shared with the main app via multi-target source membership.
+      # These files must remain dependency-free of UIKit / MapLibre so they
+      # compile against the app-extension SDK.
+      - path: OpenWeer/Core/Models/WeatherResponse.swift
+      - path: OpenWeer/Core/Models/ForecastResponse.swift
+      - path: OpenWeer/Core/Models/RainResponse.swift
+      - path: OpenWeer/Core/Models/Frame.swift
+      - path: OpenWeer/Core/Models/HealthResponse.swift
+      - path: OpenWeer/Core/Network/APIClient.swift
+      - path: OpenWeer/Core/Network/APIError.swift
+      - path: OpenWeer/Core/Location/KnownLocations.swift
+      - path: OpenWeer/Core/Theme/Colors.swift
+      - path: OpenWeer/Main/WeatherCard/WeatherIcon.swift
+      - path: OpenWeer/Core/Sharing/AppGroup.swift
+      - path: OpenWeer/Core/Sharing/SharedLocation.swift
+      - path: OpenWeer/Core/Sharing/SharedSnapshot.swift
+      - path: OpenWeer/Core/LiveActivity/RainActivityAttributes.swift
+      # Resources need explicit buildPhase: resources here because XcodeGen's
+      # top-level `resources:` block didn't generate a copy phase for this
+      # target — leaving the widget without Assets.car and all named colors
+      # resolving to clear.
+      - path: OpenWeer/Resources/Assets.xcassets
+        buildPhase: resources
+      - path: OpenWeer/Resources/Localizable.xcstrings
+        buildPhase: resources
+    info:
+      path: OpenWeerWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: OpenWeer
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        CFBundleLocalizations:
+          - nl
+          - en
+        OPENWEER_API_BASE: $(OPENWEER_API_BASE)
+        NSLocationWhenInUseUsageDescription: "OpenWeer gebruikt je locatie om het weer voor jouw plek op het widget te tonen."
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: nl.openweer.app.widgets
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+        SKIP_INSTALL: YES
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: OpenWeerWidgets/OpenWeerWidgets.entitlements
+      configs:
+        Debug:
+          OPENWEER_API_BASE: https://openweer.nl
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG OPENWEER_DEV
+          INFOPLIST_PREPROCESS: NO
+        Release:
+          OPENWEER_API_BASE: https://openweer.nl
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
+          INFOPLIST_PREPROCESS: NO
 
   OpenWeerTests:
     type: bundle.unit-test
@@ -101,6 +176,7 @@ targets:
       base:
         BUNDLE_LOADER: "$(TEST_HOST)"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/OpenWeer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OpenWeer"
+        GENERATE_INFOPLIST_FILE: YES
 
   OpenWeerUITests:
     type: bundle.ui-testing
@@ -111,6 +187,7 @@ targets:
     settings:
       base:
         TEST_TARGET_NAME: OpenWeer
+        GENERATE_INFOPLIST_FILE: YES
 
 schemes:
   OpenWeer:

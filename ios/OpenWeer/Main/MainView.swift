@@ -6,15 +6,15 @@ struct MainView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var clock = FrameClock()
     @State private var loadError: String?
-    @State private var isLoading = false
     @State private var detent: SheetDetent = .collapsed
     @State private var chatPresented = false
     @State private var locationService = LocationService.shared
     @State private var pendingPanTask: Task<Void, Never>?
+    @State private var loadTask: Task<Void, Never>?
 
-    /// Drag-handle (28) + search bar (~46) + timeline card (~108) +
-    /// rain card (~222, incl. graph + legend + padding) ≈ 414
-    private let collapsedSheetHeight: CGFloat = 414
+    /// Drag-handle (28) + search bar (~46) + timeline card (~108) ≈ 182,
+    /// plus the chip row peeking from the body to hint that more is below.
+    private let collapsedSheetHeight: CGFloat = 220
 
     var body: some View {
         @Bindable var state = appState
@@ -73,8 +73,6 @@ struct MainView: View {
                         .padding(.horizontal, 16)
                         timelineCard
                             .padding(.horizontal, 16)
-                        rainCard
-                            .padding(.horizontal, 16)
                             .padding(.bottom, 4)
                     }
                 },
@@ -85,7 +83,7 @@ struct MainView: View {
         .task {
             await loadFrames()
             await tryUseUserLocationOnLaunch()
-            await loadAllData()
+            startLoad()
         }
         .onChange(of: appState.forecastHorizon) { oldHorizon, _ in
             // Re-anchor / reclamp the cursor when the visible window changes.
@@ -154,36 +152,6 @@ struct MainView: View {
     }
 
     @ViewBuilder
-    private var rainCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Regen — komende 2 uur")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.owInkPrimary)
-                Spacer()
-                if let rain = appState.rain {
-                    Text(headlineText(for: rain))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color.owInkSecondary)
-                }
-            }
-            if let rain = appState.rain {
-                RainGraph(samples: rain.samples, analysisAt: rain.analysisAt)
-                RainLegend()
-            } else if isLoading {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 110)
-            } else {
-                Text("Geen gegevens beschikbaar")
-                    .foregroundStyle(Color.owInkSecondary)
-                    .frame(maxWidth: .infinity, minHeight: 110)
-            }
-        }
-        .padding(16)
-        .background(Color.owSurfaceCard)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-
-    @ViewBuilder
     private var timelineCard: some View {
         @Bindable var state = appState
         VStack(alignment: .leading, spacing: 10) {
@@ -235,14 +203,6 @@ struct MainView: View {
         case .hourly:   prefix = "Per uur"
         }
         return "\(prefix) · \(formatter.string(from: f.ts))"
-    }
-
-    private func headlineText(for rain: RainResponse) -> String {
-        let peak = rain.samples.max(by: { $0.mmPerHour < $1.mmPerHour })
-        guard let peak, peak.mmPerHour >= 0.1 else {
-            return "Droog"
-        }
-        return String(format: "Piek %.1f mm/u", peak.mmPerHour)
     }
 
     private func apiBaseURL() -> URL {
@@ -302,7 +262,7 @@ struct MainView: View {
         pendingPanTask = nil
         appState.coordinate = coord
         appState.locationName = name
-        Task { await loadAllData() }
+        startLoad()
     }
 
     /// User-driven pan/zoom settled — adopt the new center as the active
@@ -314,9 +274,10 @@ struct MainView: View {
             if Task.isCancelled { return }
             appState.coordinate = coord
             appState.locationName = "Locatie zoeken…"
-            async let label = locationService.resolvePlaceName(for: coord)
-            await loadAllData()
-            let resolved = await label
+            // Fetch weather data and the reverse-geocoded name in parallel;
+            // neither waits on the other.
+            startLoad()
+            let resolved = await locationService.resolvePlaceName(for: coord)
             if Task.isCancelled { return }
             if let name = resolved {
                 appState.locationName = name
@@ -337,42 +298,90 @@ struct MainView: View {
             locationService.requestPermission()
         }
         if let coord = await locationService.resolveCurrentLocation() {
-            await MainActor.run {
-                appState.coordinate = coord
-                appState.locationName = locationService.lastPlaceName ?? "Mijn locatie"
-            }
-            await loadAllData()
+            appState.coordinate = coord
+            appState.locationName = locationService.lastPlaceName ?? "Mijn locatie"
+            startLoad()
             return
         }
         // Fallback: Amsterdam
-        await MainActor.run {
-            let amsterdam = KnownLocations.all[0]
-            appState.coordinate = amsterdam.coordinate
-            appState.locationName = amsterdam.name
+        let amsterdam = KnownLocations.all[0]
+        appState.coordinate = amsterdam.coordinate
+        appState.locationName = amsterdam.name
+        startLoad()
+    }
+
+    /// Cancel any in-flight load and kick off a fresh fan-out. Each endpoint
+    /// commits its slice of `appState` independently the moment it resolves
+    /// — so the fastest call (usually /api/rain) lands in a few hundred ms
+    /// instead of being gated on the slowest (/api/forecast).
+    private func startLoad() {
+        loadTask?.cancel()
+        loadTask = Task { @MainActor in
+            await loadAllData()
         }
-        await loadAllData()
     }
 
     private func loadAllData() async {
         let coord = appState.coordinate
-        await MainActor.run { isLoading = true }
-        async let rain = APIClient.shared.rain(at: coord)
-        async let weather = APIClient.shared.weather(at: coord)
-        async let forecast = APIClient.shared.forecast(at: coord)
+        async let rain: Void = loadRain(coord: coord)
+        async let weather: Void = loadWeather(coord: coord)
+        async let forecast: Void = loadForecast(coord: coord)
+        _ = await (rain, weather, forecast)
+    }
+
+    @MainActor
+    private func loadRain(coord: CLLocationCoordinate2D) async {
         do {
-            let (r, w, f) = try await (rain, weather, forecast)
-            await MainActor.run {
-                appState.rain = r
-                appState.weather = w
-                appState.forecast = f
-                isLoading = false
-            }
+            let r = try await APIClient.shared.rain(at: coord)
+            if Task.isCancelled { return }
+            appState.rain = r
+        } catch where Self.isCancellation(error) {
+            return
         } catch {
-            await MainActor.run {
-                loadError = String(describing: error)
-                isLoading = false
-            }
+            if Task.isCancelled { return }
+            loadError = String(describing: error)
         }
+    }
+
+    @MainActor
+    private func loadWeather(coord: CLLocationCoordinate2D) async {
+        do {
+            let w = try await APIClient.shared.weather(at: coord)
+            if Task.isCancelled { return }
+            appState.weather = w
+        } catch where Self.isCancellation(error) {
+            return
+        } catch {
+            if Task.isCancelled { return }
+            loadError = String(describing: error)
+        }
+    }
+
+    @MainActor
+    private func loadForecast(coord: CLLocationCoordinate2D) async {
+        do {
+            let f = try await APIClient.shared.forecast(at: coord)
+            if Task.isCancelled { return }
+            appState.forecast = f
+        } catch where Self.isCancellation(error) {
+            return
+        } catch {
+            if Task.isCancelled { return }
+            loadError = String(describing: error)
+        }
+    }
+
+    /// Treats both Swift's structured `CancellationError` and URLSession's
+    /// `URLError.cancelled` (NSURLErrorCancelled, -999) as silent. The
+    /// latter is what we get when `loadTask?.cancel()` aborts an in-flight
+    /// fetch — usually because the marker moved before the previous load
+    /// finished. Without this guard the alert flashes "Fout bij laden …
+    /// Code=-999 'cancelled'" on every fast pan.
+    private static func isCancellation(_ error: any Error) -> Bool {
+        if error is CancellationError { return true }
+        if let u = error as? URLError, u.code == .cancelled { return true }
+        let ns = error as NSError
+        return ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled
     }
 }
 

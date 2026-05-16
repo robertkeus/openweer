@@ -16,12 +16,15 @@ struct HorizonButton: View {
             }
         } label: {
             Text("+\(value.hours)u")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .foregroundStyle(.white)
-                .frame(width: 32, height: 32)
+                .padding(.horizontal, 2)
+                .frame(minWidth: 32, minHeight: 32)
                 .background(Color.owAccent)
-                .clipShape(Circle())
+                .clipShape(Capsule())
         }
         .accessibilityLabel("Voorspelling-horizon: +\(value.hours) uur. Klik om aan te passen.")
     }

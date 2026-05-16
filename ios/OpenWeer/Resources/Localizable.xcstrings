@@ -1,11 +1,58 @@
 {
   "sourceLanguage" : "nl",
   "strings" : {
-    "/" : {
+    "%@ · %@" : {
+      "localizations" : {
+        "nl" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ uur" : {
 
     },
-    "8-daagse verwachting" : {
+    "%@%%" : {
 
+    },
+    "+%@u" : {
+
+    },
+    "De komende dagen in één oogopslag." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The coming days at a glance."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De komende dagen in één oogopslag."
+          }
+        }
+      }
+    },
+    "Droog komende %lld min" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dry for the next %lld min"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Droog komende %lld min"
+          }
+        }
+      }
     },
     "English" : {
 
@@ -16,7 +63,44 @@
     "Geen gegevens beschikbaar" : {
 
     },
+    "Geen regen verwacht" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No rain expected"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geen regen verwacht"
+          }
+        }
+      }
+    },
+    "Huidig weer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current weather"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Huidig weer"
+          }
+        }
+      }
+    },
     "Ik heb het actuele weer en de regenverwachting voor jouw locatie en de grote NL-steden bij de hand." : {
+
+    },
+    "Komende dagen" : {
 
     },
     "Locatie" : {
@@ -96,8 +180,42 @@
     "Nederlands" : {
 
     },
+    "Neerslag voor de komende twee uur." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precipitation for the next two hours."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neerslag voor de komende twee uur."
+          }
+        }
+      }
+    },
     "Niets gevonden" : {
 
+    },
+    "Pak een paraplu mee" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grab an umbrella"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pak een paraplu mee"
+          }
+        }
+      }
     },
     "Probeer een andere zoekopdracht in Nederland." : {
 
@@ -170,6 +288,23 @@
         }
       }
     },
+    "Regen — 2 uur" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rain — 2 hours"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regen — 2 uur"
+          }
+        }
+      }
+    },
     "Regen — komende 2 uur" : {
 
     },
@@ -182,7 +317,64 @@
     "Stel een weervraag" : {
 
     },
+    "Temperatuur en weersbeeld voor jouw plek." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperature and weather for your location."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperatuur en weersbeeld voor jouw plek."
+          }
+        }
+      }
+    },
+    "Tik om te openen" : {
+
+    },
+    "tot regen" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "to rain"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "tot regen"
+          }
+        }
+      }
+    },
+    "Verwachting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forecast"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwachting"
+          }
+        }
+      }
+    },
     "voelt als %@" : {
+
+    },
+    "Voelt als %@" : {
 
     },
     "welcome.cta" : {

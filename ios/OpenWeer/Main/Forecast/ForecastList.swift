@@ -5,26 +5,27 @@ struct ForecastList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("8-daagse verwachting")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.owInkPrimary)
-                Spacer()
-                Text(response.source)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(Color.owInkSecondary)
-            }
+            Text("Komende dagen")
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(0.8)
+                .textCase(.uppercase)
+                .foregroundStyle(Color.owInkSecondary)
+
             VStack(spacing: 0) {
                 ForEach(Array(response.days.enumerated()), id: \.element.id) { idx, day in
-                    DailyForecastRow(day: day)
+                    DailyForecastRow(day: day, index: idx)
                     if idx < response.days.count - 1 {
-                        Divider().opacity(0.4)
+                        Divider()
+                            .background(Color.owInkSecondary.opacity(0.15))
                     }
                 }
             }
+            .background(Color.owSurfaceCard)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.owInkSecondary.opacity(0.15), lineWidth: 1)
+            )
         }
-        .padding(16)
-        .background(Color.owSurfaceCard)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
