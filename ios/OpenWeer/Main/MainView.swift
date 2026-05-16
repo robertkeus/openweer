@@ -4,17 +4,22 @@ import CoreLocation
 struct MainView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
     @State private var clock = FrameClock()
     @State private var loadError: String?
-    @State private var detent: SheetDetent = .collapsed
+    @State private var detent: PresentationDetent = .height(220)
+    @State private var sheetPresented: Bool = true
     @State private var chatPresented = false
     @State private var locationService = LocationService.shared
     @State private var pendingPanTask: Task<Void, Never>?
     @State private var loadTask: Task<Void, Never>?
 
-    /// Drag-handle (28) + search bar (~46) + timeline card (~108) ≈ 182,
-    /// plus the chip row peeking from the body to hint that more is below.
-    private let collapsedSheetHeight: CGFloat = 220
+    /// Native drag indicator (~28) + breathing padding (20) + search bar (~46)
+    /// + timeline card (~108) + chip-row peek to hint that more is below.
+    private let collapsedSheetHeight: CGFloat = 248
+    private var collapsedDetent: PresentationDetent { .height(collapsedSheetHeight) }
+    private var mediumDetent: PresentationDetent { .fraction(0.55) }
+    private var expandedDetent: PresentationDetent { .large }
 
     var body: some View {
         @Bindable var state = appState
@@ -56,30 +61,19 @@ struct MainView: View {
                 Spacer()
             }
             .ignoresSafeArea(edges: .bottom)
-
-            BottomSheet(
-                detent: $detent,
-                collapsedHeight: collapsedSheetHeight,
-                header: {
-                    VStack(spacing: 8) {
-                        LocationBar(
-                            onPick: { coord, name in
-                                switchTo(coord: coord, name: name)
-                            },
-                            onUseMyLocation: {
-                                await recenterToUserLocation()
-                            }
-                        )
-                        .padding(.horizontal, 16)
-                        timelineCard
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 4)
-                    }
-                },
-                bodyContent: { sheetBody }
-            )
         }
         .background(Color.owSurface)
+        .sheet(isPresented: $sheetPresented) {
+            sheetContent
+                .presentationDetents(
+                    [collapsedDetent, mediumDetent, expandedDetent],
+                    selection: $detent
+                )
+                .presentationDragIndicator(.visible)
+                .presentationBackgroundInteraction(.enabled(upThrough: mediumDetent))
+                .presentationContentInteraction(.resizes)
+                .interactiveDismissDisabled()
+        }
         .task {
             await loadFrames()
             await tryUseUserLocationOnLaunch()
@@ -93,9 +87,12 @@ struct MainView: View {
             reclampSelection(previousCount: priorCount)
             clock.stop()
         }
-        .sheet(isPresented: $chatPresented) {
-            AiChatPanel()
-                .environment(appState)
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            // On resume from background, refresh frames and re-anchor the
+            // slider on "now" so the user never returns to a stale cursor.
+            guard oldPhase != .active, newPhase == .active else { return }
+            clock.stop()
+            Task { await loadFrames() }
         }
         .alert("Fout bij laden",
                isPresented: .constant(loadError != nil),
@@ -109,12 +106,52 @@ struct MainView: View {
     /// Sheet height (pt) at the current detent. The map uses this as a
     /// bottom contentInset so `setCenter` lands the coord above the sheet,
     /// and the marker is positioned at the matching visible center.
+    ///
+    /// Native `.presentationDetents` only updates `detent` at snap points
+    /// (not continuously during drag), so the inset jumps at end-of-drag
+    /// rather than tracking the finger. SwiftUI's implicit animation on the
+    /// state change smooths the transition over ~250 ms — visually fine
+    /// because the map content sits well above the snap-to-snap range.
     private func currentSheetHeight(in geo: GeometryProxy) -> CGFloat {
         let total = geo.size.height
-        switch detent {
-        case .collapsed: return collapsedSheetHeight
-        case .medium:    return total * 0.55
-        case .expanded:  return total * 0.92
+        if detent == mediumDetent { return total * 0.55 }
+        if detent == expandedDetent { return total }
+        return collapsedSheetHeight
+    }
+
+    /// Content of the persistent bottom sheet — header (search + timeline)
+    /// always visible, body scrolls only when the sheet is expanded.
+    ///
+    /// The chat `.sheet` is attached here, not on the root view, so it
+    /// presents from the bottom sheet's content view controller. Stacking
+    /// two `.sheet` modifiers on the same view collapses into one
+    /// presentation slot in UIKit and silently suppresses the second.
+    @ViewBuilder
+    private var sheetContent: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 8) {
+                LocationBar(
+                    onPick: { coord, name in
+                        switchTo(coord: coord, name: name)
+                    },
+                    onUseMyLocation: {
+                        await recenterToUserLocation()
+                    }
+                )
+                .padding(.horizontal, 16)
+                timelineCard
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 4)
+            }
+            .padding(.top, 20)
+
+            sheetBody
+        }
+        .background(Color.owSurface)
+        .environment(appState)
+        .sheet(isPresented: $chatPresented) {
+            AiChatPanel()
+                .environment(appState)
         }
     }
 
@@ -148,7 +185,7 @@ struct MainView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
         }
-        .scrollDisabled(detent == .collapsed)
+        .scrollDisabled(detent == collapsedDetent)
     }
 
     @ViewBuilder

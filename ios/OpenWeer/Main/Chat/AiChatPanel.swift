@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreLocation
+import UIKit
 
 struct AiChatPanel: View {
     @Environment(AppState.self) private var appState
@@ -11,18 +12,32 @@ struct AiChatPanel: View {
     @State private var streamingTask: Task<Void, Never>?
     @State private var isStreaming = false
     @State private var error: String?
+    // Height of the keyboard above the safe-area bottom inset. SwiftUI's
+    // built-in keyboard avoidance is unreliable when the input lives inside
+    // `.safeAreaInset` next to a multi-line `TextField(axis: .vertical)`, so
+    // we observe `keyboardWillChangeFrame` directly and lift the input bar by
+    // exactly the overlap height.
+    @State private var keyboardOverlap: CGFloat = 0
+    @State private var keyboardObservers: [NSObjectProtocol] = []
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if messages.isEmpty {
-                    emptyState
-                } else {
-                    messageList
+                Group {
+                    if messages.isEmpty {
+                        emptyState
+                    } else {
+                        messageList
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
                 inputBar
+                    .padding(.bottom, keyboardOverlap)
             }
             .background(Color.owSurface)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
+            .animation(.easeOut(duration: 0.22), value: keyboardOverlap)
             .navigationTitle("Vraag het OpenWeer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -36,7 +51,40 @@ struct AiChatPanel: View {
                 }
             }
         }
-        .onDisappear { streamingTask?.cancel() }
+        .onAppear(perform: subscribeToKeyboard)
+        .onDisappear {
+            streamingTask?.cancel()
+            keyboardObservers.forEach(NotificationCenter.default.removeObserver)
+            keyboardObservers.removeAll()
+        }
+    }
+
+    private func subscribeToKeyboard() {
+        let center = NotificationCenter.default
+        let change = center.addObserver(
+            forName: UIResponder.keyboardWillChangeFrameNotification,
+            object: nil,
+            queue: .main
+        ) { note in
+            guard
+                let endFrame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+                let window = UIApplication.shared.connectedScenes
+                    .compactMap({ $0 as? UIWindowScene })
+                    .flatMap({ $0.windows })
+                    .first(where: { $0.isKeyWindow })
+            else { return }
+            let bottomInset = window.safeAreaInsets.bottom
+            let overlap = max(0, window.bounds.height - endFrame.minY - bottomInset)
+            Task { @MainActor in keyboardOverlap = overlap }
+        }
+        let hide = center.addObserver(
+            forName: UIResponder.keyboardWillHideNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in keyboardOverlap = 0 }
+        }
+        keyboardObservers = [change, hide]
     }
 
     @ViewBuilder
@@ -94,6 +142,7 @@ struct AiChatPanel: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 16)
             }
+            .scrollDismissesKeyboard(.interactively)
             .onChange(of: messages.last?.content) { _, _ in
                 if let last = messages.last {
                     withAnimation(.easeOut(duration: 0.2)) {
