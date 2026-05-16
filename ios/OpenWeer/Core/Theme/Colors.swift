@@ -17,14 +17,14 @@ enum RainIntensity {
     static func color(forMmPerHour mm: Double) -> Color {
         switch mm {
         case ..<thresholds[0]:  return .owNoRain
-        case ..<thresholds[1]:  return Color(red: 0.74, green: 0.86, blue: 1.00)
-        case ..<thresholds[2]:  return Color(red: 0.45, green: 0.71, blue: 0.95)
-        case ..<thresholds[3]:  return Color(red: 0.20, green: 0.55, blue: 0.85)
-        case ..<thresholds[4]:  return Color(red: 0.12, green: 0.34, blue: 0.80)
-        case ..<thresholds[5]:  return Color(red: 0.40, green: 0.20, blue: 0.65)
-        case ..<thresholds[6]:  return Color(red: 0.65, green: 0.18, blue: 0.50)
-        case ..<thresholds[7]:  return Color(red: 0.85, green: 0.20, blue: 0.30)
-        default:                return Color(red: 0.95, green: 0.10, blue: 0.10)
+        case ..<thresholds[1]:  return Color(red: 200/255, green: 240/255, blue: 190/255)
+        case ..<thresholds[2]:  return Color(red: 143/255, green: 216/255, blue: 107/255)
+        case ..<thresholds[3]:  return Color(red:  79/255, green: 178/255, blue:  58/255)
+        case ..<thresholds[4]:  return Color(red: 245/255, green: 213/255, blue:  45/255)
+        case ..<thresholds[5]:  return Color(red: 245/255, green: 159/255, blue:  45/255)
+        case ..<thresholds[6]:  return Color(red: 230/255, green:  53/255, blue:  61/255)
+        case ..<thresholds[7]:  return Color(red: 163/255, green:  21/255, blue:  31/255)
+        default:                return Color(red: 192/255, green:  38/255, blue: 211/255)
         }
     }
 }

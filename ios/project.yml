@@ -35,6 +35,7 @@ targets:
       # so the OpenWeerTests target (which loads the app binary) can test them.
       - path: OpenWeerWidgets/Provider/WidgetRefreshPolicy.swift
       - path: OpenWeerWidgets/RainNowcast/RainBarChart.swift
+      - path: OpenWeerWidgets/RainMap/TileMath.swift
     resources:
       - OpenWeer/Resources
     info:

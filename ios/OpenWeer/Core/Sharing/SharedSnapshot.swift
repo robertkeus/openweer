@@ -7,12 +7,28 @@ struct SharedSnapshot: Codable, Sendable {
     let weather: WeatherResponse?
     let rain: RainResponse?
     let forecast: ForecastResponse?
+    /// Optional composited radar PNG used by the rain-map widget.
+    let mapImageData: Data?
     let cachedAt: Date
+
+    init(location: SharedLocation,
+         weather: WeatherResponse? = nil,
+         rain: RainResponse? = nil,
+         forecast: ForecastResponse? = nil,
+         mapImageData: Data? = nil,
+         cachedAt: Date) {
+        self.location = location
+        self.weather = weather
+        self.rain = rain
+        self.forecast = forecast
+        self.mapImageData = mapImageData
+        self.cachedAt = cachedAt
+    }
 }
 
 extension SharedSnapshot {
     enum Kind: String {
-        case current, rain, forecast
+        case current, rain, forecast, map
         var key: String { "sharedSnapshot.v1.\(rawValue)" }
     }
 

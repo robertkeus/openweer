@@ -9,6 +9,10 @@ struct WidgetEntry: TimelineEntry {
     let weather: WeatherResponse?
     let rain: RainResponse?
     let forecast: ForecastResponse?
+    /// Composited rain-radar PNG for the RainMap widget. Carried as `Data`
+    /// because `UIImage` isn't `Sendable` and we want the cache path to
+    /// round-trip through JSON cleanly.
+    let mapImageData: Data?
     /// Set when the entry came from the offline cache instead of a fresh
     /// network call. Widgets can dim or mark the timestamp.
     let isStale: Bool
@@ -21,6 +25,7 @@ extension WidgetEntry {
                     weather: nil,
                     rain: nil,
                     forecast: nil,
+                    mapImageData: nil,
                     isStale: false)
     }
 }

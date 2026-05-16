@@ -17,6 +17,7 @@ enum WidgetRefreshPolicy {
         case .rain:     return now.addingTimeInterval(rainCadence)
         case .current:  return now.addingTimeInterval(currentCadence)
         case .forecast: return now.addingTimeInterval(forecastCadence)
+        case .map:      return now.addingTimeInterval(rainCadence)
         }
     }
 
@@ -28,6 +29,7 @@ enum WidgetRefreshPolicy {
         case .rain:     return (6, 90)         // every 90 s, 9 min total
         case .current:  return (4, 5 * 60)     // every 5 min, 20 min total
         case .forecast: return (1, 0)
+        case .map:      return (4, 2 * 60)     // every 2 min, 8 min total
         }
     }
 }

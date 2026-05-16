@@ -1,9 +1,11 @@
 """Rain-rate colormap (mm/h → RGBA).
 
-Designed to read at a glance against a light basemap: low intensities lean blue,
-moderate green/yellow, severe orange/red, exceptional magenta. Below 0.1 mm/h
-is fully transparent so the basemap shines through dry pixels (NaN treated the
-same as dry).
+Follows the classic weather-radar convention so the eye reads intensity
+monotonically from "barely raining" to "exceptional": light green at the
+lowest visible drizzle, deepening to mid green, then yellow / orange for
+the heavy bands, red for severe, magenta for exceptional. Below 0.1 mm/h
+is fully transparent so the basemap shines through dry pixels (NaN is
+treated the same as dry).
 """
 
 from __future__ import annotations
@@ -16,13 +18,13 @@ import numpy as np
 # below which pixels are fully transparent.
 _STOPS: Final[tuple[tuple[float, int, int, int, int], ...]] = (
     (0.0, 0, 0, 0, 0),
-    (0.1, 155, 195, 241, 130),
-    (0.5, 92, 142, 232, 180),
-    (1.0, 31, 93, 208, 220),
-    (2.0, 45, 184, 74, 240),
-    (5.0, 245, 213, 45, 250),
-    (10.0, 245, 159, 45, 255),
-    (20.0, 230, 53, 61, 255),
+    (0.1, 200, 240, 190, 130),
+    (0.5, 143, 216, 107, 180),
+    (1.0, 79, 178, 58, 220),
+    (2.0, 245, 213, 45, 240),
+    (5.0, 245, 159, 45, 250),
+    (10.0, 230, 53, 61, 255),
+    (20.0, 163, 21, 31, 255),
     (50.0, 192, 38, 211, 255),
 )
 

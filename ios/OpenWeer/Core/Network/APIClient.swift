@@ -74,15 +74,56 @@ actor APIClient {
     }
 
     private func get<T: Decodable>(_ path: String, as: T.Type) async throws -> T {
+        try await getInternal(path, as: T.self)
+    }
+
+    func getInternal<T: Decodable>(_ path: String, as: T.Type) async throws -> T {
+        try await request(method: "GET", path: path, body: Optional<Empty>.none, as: T.self)
+    }
+
+    func postJSONInternal<B: Encodable, T: Decodable>(
+        _ path: String, body: B, as: T.Type
+    ) async throws -> T {
+        try await request(method: "POST", path: path, body: body, as: T.self)
+    }
+
+    func putJSONInternal<B: Encodable, T: Decodable>(
+        _ path: String, body: B, as: T.Type
+    ) async throws -> T {
+        try await request(method: "PUT", path: path, body: body, as: T.self)
+    }
+
+    func deleteInternal(_ path: String) async throws {
+        _ = try await request(method: "DELETE", path: path, body: Optional<Empty>.none, as: Empty.self, allowEmptyBody: true)
+    }
+
+    struct Empty: Codable {}
+
+    private func request<B: Encodable, T: Decodable>(
+        method: String,
+        path: String,
+        body: B?,
+        as: T.Type,
+        allowEmptyBody: Bool = false
+    ) async throws -> T {
         guard path.hasPrefix("/") else { throw APIError.invalidBaseURL }
         let url = baseURL.appendingPathComponent(String(path.dropFirst()))
         var req = URLRequest(url: url)
+        req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let body {
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = try JSONEncoder().encode(body)
+        }
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse else { throw APIError.nonHTTPResponse }
         guard (200..<300).contains(http.statusCode) else {
             throw APIError.http(status: http.statusCode, path: path,
                                 body: String(data: data, encoding: .utf8))
+        }
+        if allowEmptyBody && data.isEmpty {
+            // Caller asked for Empty + 204 No Content path.
+            return try decoder.decode(T.self, from: Data("{}".utf8))
         }
         do {
             return try decoder.decode(T.self, from: data)

@@ -6,6 +6,7 @@ struct OpenWeerWidgetsBundle: WidgetBundle {
     var body: some Widget {
         CurrentConditionsWidget()
         RainNowcastWidget()
+        RainMapWidget()
         ForecastWidget()
         RainLiveActivity()
     }

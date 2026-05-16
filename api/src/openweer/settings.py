@@ -8,6 +8,7 @@ only — never in source.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -59,6 +60,23 @@ class Settings(BaseSettings):
         validation_alias="PUBLIC_SITE_URL",
     )
     log_level: str = Field(default="INFO", validation_alias="OPENWEER_LOG_LEVEL")
+
+    # ---- APNs (rain push notifications) ----
+    apns_bundle_id: str = Field(default="nl.openweer.app", validation_alias="APNS_BUNDLE_ID")
+    apns_key_id: str | None = Field(default=None, validation_alias="APNS_KEY_ID")
+    apns_team_id: str | None = Field(default=None, validation_alias="APNS_TEAM_ID")
+    apns_private_key_path: Path | None = Field(
+        default=None, validation_alias="APNS_PRIVATE_KEY_PATH"
+    )
+    apns_environment: Literal["sandbox", "production"] = Field(
+        default="sandbox", validation_alias="APNS_ENVIRONMENT"
+    )
+    pusher_interval_seconds: int = Field(
+        default=300, ge=60, validation_alias="PUSHER_INTERVAL_SECONDS"
+    )
+    pusher_dedupe_window_minutes: int = Field(
+        default=30, ge=1, validation_alias="PUSHER_DEDUPE_WINDOW_MINUTES"
+    )
 
     # ---- accessors that surface the raw key only at the I/O boundary ----
 

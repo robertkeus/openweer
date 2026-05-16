@@ -25,6 +25,7 @@ enum WidgetDataLoader {
                                weather: cached.weather,
                                rain: cached.rain,
                                forecast: cached.forecast,
+                               mapImageData: cached.mapImageData,
                                isStale: false)
         }
         return .placeholder()
@@ -87,6 +88,7 @@ enum WidgetDataLoader {
                         weather: base.weather,
                         rain: base.rain,
                         forecast: base.forecast,
+                        mapImageData: base.mapImageData,
                         isStale: base.isStale)
         }
     }
@@ -103,15 +105,25 @@ enum WidgetDataLoader {
             async let rain = APIClient.shared.rain(at: coord)
             let (w, r) = try await (weather, rain)
             return WidgetEntry(date: now, location: location,
-                               weather: w, rain: r, forecast: nil, isStale: false)
+                               weather: w, rain: r, forecast: nil,
+                               mapImageData: nil, isStale: false)
         case .rain:
             let r = try await APIClient.shared.rain(at: coord)
             return WidgetEntry(date: now, location: location,
-                               weather: nil, rain: r, forecast: nil, isStale: false)
+                               weather: nil, rain: r, forecast: nil,
+                               mapImageData: nil, isStale: false)
         case .forecast:
             let f = try await APIClient.shared.forecast(at: coord)
             return WidgetEntry(date: now, location: location,
-                               weather: nil, rain: nil, forecast: f, isStale: false)
+                               weather: nil, rain: nil, forecast: f,
+                               mapImageData: nil, isStale: false)
+        case .map:
+            async let rain = APIClient.shared.rain(at: coord)
+            async let mapData = RainMapLoader.fetch(for: coord)
+            let (r, image) = try await (rain, mapData)
+            return WidgetEntry(date: now, location: location,
+                               weather: nil, rain: r, forecast: nil,
+                               mapImageData: image, isStale: false)
         }
     }
 
@@ -120,6 +132,7 @@ enum WidgetDataLoader {
                                   weather: entry.weather,
                                   rain: entry.rain,
                                   forecast: entry.forecast,
+                                  mapImageData: entry.mapImageData,
                                   cachedAt: entry.date)
         SharedSnapshot.save(snap, as: kind)
     }
@@ -133,10 +146,12 @@ enum WidgetDataLoader {
                                weather: cached.weather,
                                rain: cached.rain,
                                forecast: cached.forecast,
+                               mapImageData: cached.mapImageData,
                                isStale: true)
         }
         return WidgetEntry(date: now, location: location,
-                           weather: nil, rain: nil, forecast: nil, isStale: true)
+                           weather: nil, rain: nil, forecast: nil,
+                           mapImageData: nil, isStale: true)
     }
 
     // MARK: - Timeout

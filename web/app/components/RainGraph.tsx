@@ -39,13 +39,13 @@ function maxBound(samples: readonly RainSample[]): number {
 function colorFor(mm: number): string {
   // Mirrors the backend colormap stops at 0.1 / 0.5 / 1 / 2 / 5 / 10 / 20 / 50.
   if (mm < 0.1) return "var(--color-no-rain)";
-  if (mm < 0.5) return "rgb(155,195,241)";
-  if (mm < 1.0) return "rgb(92,142,232)";
-  if (mm < 2.0) return "rgb(31,93,208)";
-  if (mm < 5.0) return "rgb(45,184,74)";
-  if (mm < 10.0) return "rgb(245,213,45)";
-  if (mm < 20.0) return "rgb(245,159,45)";
-  if (mm < 50.0) return "rgb(230,53,61)";
+  if (mm < 0.5) return "rgb(200,240,190)";
+  if (mm < 1.0) return "rgb(143,216,107)";
+  if (mm < 2.0) return "rgb(79,178,58)";
+  if (mm < 5.0) return "rgb(245,213,45)";
+  if (mm < 10.0) return "rgb(245,159,45)";
+  if (mm < 20.0) return "rgb(230,53,61)";
+  if (mm < 50.0) return "rgb(163,21,31)";
   return "rgb(192,38,211)";
 }
 

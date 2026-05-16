@@ -1,6 +1,12 @@
 {
   "sourceLanguage" : "nl",
   "strings" : {
+    " " : {
+
+    },
+    "%@" : {
+
+    },
     "%@ · %@" : {
       "localizations" : {
         "nl" : {
@@ -11,14 +17,90 @@
         }
       }
     },
+    "%@ · %@ min" : {
+      "localizations" : {
+        "nl" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@ min"
+          }
+        }
+      }
+    },
+    "%@ min" : {
+
+    },
     "%@ uur" : {
 
     },
     "%@%%" : {
 
     },
+    "%@°" : {
+
+    },
     "+%@u" : {
 
+    },
+    "15 min" : {
+
+    },
+    "30 min" : {
+
+    },
+    "60 min" : {
+
+    },
+    "Begint om %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts at %@"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Begint om %@"
+          }
+        }
+      }
+    },
+    "Bezig met laden" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bezig met laden"
+          }
+        }
+      }
+    },
+    "Bijna droog" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Almost dry"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bijna droog"
+          }
+        }
+      }
     },
     "De komende dagen in één oogopslag." : {
       "extractionState" : "manual",
@@ -37,19 +119,39 @@
         }
       }
     },
-    "Droog komende %lld min" : {
+    "Donker" : {
+
+    },
+    "Droog" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dry for the next %lld min"
+            "value" : "Dry"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Droog komende %lld min"
+            "value" : "Droog"
+          }
+        }
+      }
+    },
+    "Droog vanaf %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dry from %@"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Droog vanaf %@"
           }
         }
       }
@@ -80,6 +182,57 @@
         }
       }
     },
+    "Het blijft droog" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It stays dry"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het blijft droog"
+          }
+        }
+      }
+    },
+    "Het regent nu" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Raining now"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het regent nu"
+          }
+        }
+      }
+    },
+    "Het regent op jouw plek" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It's raining at your spot"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het regent op jouw plek"
+          }
+        }
+      }
+    },
     "Huidig weer" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -101,6 +254,26 @@
 
     },
     "Komende dagen" : {
+
+    },
+    "Komende twee uur" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For the next two hours"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Komende twee uur"
+          }
+        }
+      }
+    },
+    "Licht" : {
 
     },
     "Locatie" : {
@@ -174,8 +347,34 @@
         }
       }
     },
+    "Matig" : {
+
+    },
+    "Maximaal %@ favorieten per apparaat." : {
+
+    },
     "Mijn locatie" : {
 
+    },
+    "min" : {
+
+    },
+    "Nat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wet"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nat"
+          }
+        }
+      }
     },
     "Nederlands" : {
 
@@ -199,6 +398,26 @@
     },
     "Niets gevonden" : {
 
+    },
+    "Nog geen favorieten" : {
+
+    },
+    "Nu" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Now"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nu"
+          }
+        }
+      }
     },
     "Pak een paraplu mee" : {
       "extractionState" : "manual",
@@ -250,6 +469,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "We waarschuwen je tot 30 minuten voordat het bij jou gaat regenen."
+          }
+        }
+      }
+    },
+    "push.rain.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At %1$@, %3$@ rain starts in %2$@ min."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bij %1$@ start over %2$@ min %3$@ regen."
+          }
+        }
+      }
+    },
+    "push.rain.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rain incoming"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regen in aantocht"
           }
         }
       }
@@ -308,6 +561,23 @@
     "Regen — komende 2 uur" : {
 
     },
+    "Regen op komst" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rain incoming"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regen op komst"
+          }
+        }
+      }
+    },
     "Resultaten" : {
 
     },
@@ -315,6 +585,9 @@
 
     },
     "Stel een weervraag" : {
+
+    },
+    "Systeem" : {
 
     },
     "Temperatuur en weersbeeld voor jouw plek." : {
@@ -334,9 +607,6 @@
         }
       }
     },
-    "Tik om te openen" : {
-
-    },
     "tot regen" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -350,6 +620,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "tot regen"
+          }
+        }
+      }
+    },
+    "Vandaag" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vandaag"
           }
         }
       }
@@ -370,6 +657,9 @@
           }
         }
       }
+    },
+    "Voeg een plek toe om een melding te krijgen voordat het daar gaat regenen." : {
+
     },
     "voelt als %@" : {
 
@@ -427,6 +717,9 @@
           }
         }
       }
+    },
+    "Zwaar" : {
+
     }
   },
   "version" : "1.0"

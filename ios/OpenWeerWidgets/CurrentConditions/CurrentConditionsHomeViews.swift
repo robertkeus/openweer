@@ -1,28 +1,32 @@
 import SwiftUI
 
+// MARK: - Small
+
 struct CurrentConditionsSmall: View {
     let entry: WidgetEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ConditionGlyph(kind: condition, size: 44)
-            Spacer(minLength: 0)
-            Text(temperature)
-                .font(.system(size: 34, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.owInkPrimary)
-                .unredacted()
-            Text(entry.location.name)
-                .font(.caption)
-                .foregroundStyle(Color.owInkSecondary)
-                .lineLimit(1)
-                .unredacted()
-            if entry.weather == nil {
-                Text("Tik om te openen")
-                    .font(.caption2)
+        VStack(alignment: .leading, spacing: WidgetTheme.gap) {
+            HStack(alignment: .top) {
+                Text(entry.location.name)
+                    .font(WidgetTheme.eyebrow)
+                    .tracking(0.6)
                     .foregroundStyle(Color.owInkSecondary)
                     .lineLimit(1)
                     .unredacted()
+                Spacer(minLength: 0)
+                ConditionGlyph(kind: condition, size: 28)
             }
+            Spacer(minLength: 0)
+            Text(temperature)
+                .font(WidgetTheme.hero(size: 56))
+                .foregroundStyle(Color.owInkPrimary)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+            Text(conditionLabel)
+                .font(WidgetTheme.support)
+                .foregroundStyle(Color.owInkSecondary)
+                .lineLimit(1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -33,47 +37,72 @@ struct CurrentConditionsSmall: View {
     private var temperature: String {
         WidgetFormatting.temperature(entry.weather?.current.temperatureC)
     }
+    private var conditionLabel: String {
+        entry.weather?.current.conditionLabel ?? "Bezig met laden"
+    }
 }
+
+// MARK: - Medium
 
 struct CurrentConditionsMedium: View {
     let entry: WidgetEntry
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            VStack(alignment: .leading, spacing: 6) {
-                ConditionGlyph(kind: condition, size: 50)
-                Text(entry.location.name)
-                    .font(.caption)
+        HStack(alignment: .top, spacing: WidgetTheme.block) {
+            heroColumn
+            Spacer(minLength: 0)
+            statsColumn
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var heroColumn: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(entry.location.name)
+                .font(WidgetTheme.eyebrow)
+                .tracking(0.6)
+                .foregroundStyle(Color.owInkSecondary)
+                .lineLimit(1)
+                .unredacted()
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(temperature)
+                    .font(WidgetTheme.hero(size: 64))
+                    .foregroundStyle(Color.owInkPrimary)
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
+            }
+            Text(conditionLabel)
+                .font(WidgetTheme.support)
+                .foregroundStyle(Color.owInkSecondary)
+                .lineLimit(1)
+            if let feels = entry.weather?.current.feelsLikeC {
+                Text("Voelt als \(WidgetFormatting.temperature(feels))")
+                    .font(WidgetTheme.meta)
                     .foregroundStyle(Color.owInkSecondary)
                     .lineLimit(1)
             }
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(temperature)
-                        .font(.system(size: 34, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.owInkPrimary)
-                    Spacer()
-                    Text(WidgetFormatting.updatedAt(entry.weather?.current.observedAt))
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(Color.owInkSecondary)
-                }
-                if let feels = entry.weather?.current.feelsLikeC {
-                    Text("Voelt als \(WidgetFormatting.temperature(feels))")
-                        .font(.caption)
-                        .foregroundStyle(Color.owInkSecondary)
-                }
-                Text(rainHeadline)
-                    .font(.footnote.weight(.medium))
+        }
+    }
+
+    private var statsColumn: some View {
+        VStack(alignment: .trailing, spacing: WidgetTheme.gap) {
+            ConditionGlyph(kind: condition, size: 56)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(verdict)
+                    .font(WidgetTheme.statement)
                     .foregroundStyle(Color.owAccent)
                     .lineLimit(1)
-                Text(WidgetFormatting.outsideVerdict(rain: entry.rain, now: entry.date))
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Color.owInkPrimary)
-                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if let wind = windSummary {
+                    Text(wind)
+                        .font(WidgetTheme.meta)
+                        .foregroundStyle(Color.owInkSecondary)
+                }
+                Text(updatedAt)
+                    .font(WidgetTheme.meta)
+                    .foregroundStyle(Color.owInkSecondary)
             }
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var condition: ConditionKind {
@@ -82,10 +111,27 @@ struct CurrentConditionsMedium: View {
     private var temperature: String {
         WidgetFormatting.temperature(entry.weather?.current.temperatureC)
     }
-    private var rainHeadline: String {
-        WidgetFormatting.rainHeadline(rain: entry.rain)
+    private var conditionLabel: String {
+        entry.weather?.current.conditionLabel ?? "Bezig met laden"
+    }
+    private var verdict: String {
+        WidgetFormatting.outsideVerdict(rain: entry.rain, now: entry.date)
+    }
+    private var windSummary: String? {
+        guard let current = entry.weather?.current,
+              let bft = current.windSpeedBft else { return nil }
+        if let compass = current.windDirectionCompass {
+            return "\(compass) \(bft) bft"
+        }
+        return "\(bft) bft"
+    }
+    private var updatedAt: String {
+        let value = WidgetFormatting.updatedAt(entry.weather?.current.observedAt)
+        return value.isEmpty ? "" : "Bijgewerkt \(value)"
     }
 }
+
+// MARK: - Formatting
 
 /// Shared formatting bits so each view stays focused on layout.
 enum WidgetFormatting {
@@ -95,26 +141,30 @@ enum WidgetFormatting {
     }
 
     static func rainHeadline(rain: RainResponse?) -> String {
-        guard let rain else { return "Open OpenWeer om te laden" }
-        let fmt = DateFormatter()
-        fmt.dateFormat = "HH:mm"
-        if let first = rain.samples.first(where: { $0.minutesAhead > 0 && $0.mmPerHour >= 0.1 }) {
-            return "Regen om \(fmt.string(from: first.validAt))"
+        guard let rain else { return "Bezig met laden" }
+        switch rain.outlook() {
+        case .rainingNow:           return "Het regent nu"
+        case .startsSoon(let date): return "Regen om \(hhmm(date))"
+        case .stopsSoon(let date):  return "Droog vanaf \(hhmm(date))"
+        case .dry:                  return "Geen regen verwacht"
         }
-        return "Geen regen verwacht"
     }
 
     /// "11:23" timestamp prefixed for a "bijgewerkt" caption.
     static func updatedAt(_ date: Date?) -> String {
         guard let date else { return "" }
-        let fmt = DateFormatter()
-        fmt.dateFormat = "HH:mm"
-        return fmt.string(from: date)
+        return hhmm(date)
     }
 
     /// 15-minute go/no-go verdict — short enough for a small widget caption.
     static func outsideVerdict(rain: RainResponse?, now: Date) -> String {
         guard let rain else { return "" }
         return rain.outsideVerdict(now: now)
+    }
+
+    static func hhmm(_ date: Date) -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "HH:mm"
+        return fmt.string(from: date)
     }
 }

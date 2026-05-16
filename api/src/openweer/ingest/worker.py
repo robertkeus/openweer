@@ -19,6 +19,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from openweer._logging import get_logger
+from openweer.devices.worker import PusherLoop
 from openweer.ingest.storage import IngestStorage, ManifestEntry
 from openweer.knmi.client import KnmiClient, KnmiClientError
 from openweer.knmi.datasets import Dataset, find_dataset
@@ -42,6 +43,7 @@ class IngestWorker:
     polling_interval_s: float = DEFAULT_POLLING_INTERVAL_S
     retention_hours: float = DEFAULT_RETENTION_HOURS
     retention_sweep_interval_s: float = DEFAULT_RETENTION_SWEEP_INTERVAL_S
+    pusher: PusherLoop | None = None
 
     async def run(self) -> None:
         """Run all loops concurrently until cancelled."""
@@ -50,11 +52,14 @@ class IngestWorker:
             datasets=[d.key for d in self.datasets],
             polling_interval_s=self.polling_interval_s,
             retention_hours=self.retention_hours,
+            pusher_enabled=self.pusher is not None,
         )
         async with asyncio.TaskGroup() as tg:
             tg.create_task(self._mqtt_loop(), name="ingest.mqtt")
             tg.create_task(self._polling_loop(), name="ingest.poll")
             tg.create_task(self._retention_loop(), name="ingest.gc")
+            if self.pusher is not None:
+                tg.create_task(self.pusher.run(), name="ingest.pusher")
 
     # ---- loops ----
 

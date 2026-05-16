@@ -25,14 +25,11 @@ struct NotificationsScreen: View {
             VStack(spacing: 12) {
                 Button {
                     Task {
-                        let granted = await PushService.shared.requestAuthorizationAndRegister()
-                        if granted, let token = PushService.shared.deviceToken {
-                            await PushRegistration.shared.register(
-                                token: token,
-                                coordinate: appState.coordinate,
-                                language: appState.language
-                            )
-                        }
+                        // requestAuthorizationAndRegister triggers
+                        // didRegisterForRemoteNotifications → PushService.handleRegistered,
+                        // which itself registers the device + syncs favorites with the
+                        // backend. No more imperative POST from this screen.
+                        _ = await PushService.shared.requestAuthorizationAndRegister()
                         onContinue()
                     }
                 } label: {

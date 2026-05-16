@@ -1,111 +1,171 @@
 import SwiftUI
 
+// MARK: - Small
+
 struct RainNowcastSmall: View {
     let entry: WidgetEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(entry.location.name)
-                    .font(.caption)
-                    .foregroundStyle(Color.owInkSecondary)
-                    .lineLimit(1)
-                Spacer()
-                Text(WidgetFormatting.updatedAt(entry.rain?.analysisAt))
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(Color.owInkSecondary)
-            }
-            Text(WidgetFormatting.rainHeadline(rain: entry.rain))
-                .font(.headline)
-                .foregroundStyle(Color.owInkPrimary)
-                .lineLimit(2)
-            Text(WidgetFormatting.outsideVerdict(rain: entry.rain, now: entry.date))
-                .font(.caption.weight(.medium))
-                .foregroundStyle(Color.owAccent)
+        VStack(alignment: .leading, spacing: WidgetTheme.gap) {
+            Text(entry.location.name)
+                .font(WidgetTheme.eyebrow)
+                .tracking(0.6)
+                .foregroundStyle(Color.owInkSecondary)
                 .lineLimit(1)
-            Spacer(minLength: 2)
-            RainBarChart(samples: entry.rain?.samples ?? [])
-                .frame(maxWidth: .infinity)
-                .frame(height: 36)
+                .unredacted()
+
+            heroBlock
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            chartBlock
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
+
+    private var heroBlock: some View {
+        let summary = RainSummary(rain: entry.rain, now: entry.date)
+        return VStack(alignment: .leading, spacing: 0) {
+            Text(summary.hero)
+                .font(WidgetTheme.hero(size: 30))
+                .foregroundStyle(summary.tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(summary.detail)
+                .font(WidgetTheme.support)
+                .foregroundStyle(Color.owInkSecondary)
+                .lineLimit(2)
+        }
+    }
+
+    private var chartBlock: some View {
+        let snapshot = RainWindow.recent(from: entry.rain?.samples ?? [],
+                                         now: entry.date)
+        return RainBarChart(samples: snapshot.samples, nowIndex: snapshot.nowIndex)
+            .frame(maxWidth: .infinity)
+            .frame(height: 30)
+    }
 }
+
+// MARK: - Medium
 
 struct RainNowcastMedium: View {
     let entry: WidgetEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(WidgetFormatting.rainHeadline(rain: entry.rain))
-                        .font(.headline)
-                        .foregroundStyle(Color.owInkPrimary)
-                        .lineLimit(1)
-                    Text(entry.location.name)
-                        .font(.caption)
-                        .foregroundStyle(Color.owInkSecondary)
-                        .lineLimit(1)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(totalLabel)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(Color.owInkSecondary)
-                    Text(WidgetFormatting.updatedAt(entry.rain?.analysisAt))
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(Color.owInkSecondary)
-                }
-            }
-            Text(WidgetFormatting.outsideVerdict(rain: entry.rain, now: entry.date))
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Color.owAccent)
-                .lineLimit(1)
-            RainBarChart(samples: entry.rain?.samples ?? [])
-                .frame(maxWidth: .infinity)
-                .frame(height: 48)
-            RainAxisLabels(samples: entry.rain?.samples ?? [])
-                .font(.caption2.monospacedDigit())
-                .foregroundStyle(Color.owInkSecondary)
+        VStack(alignment: .leading, spacing: WidgetTheme.gap) {
+            header
+            chartBlock
+            axis
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private var totalLabel: String {
-        let total = (entry.rain?.samples ?? []).reduce(0.0) { $0 + max($1.mmPerHour, 0) } / 12
-        return String(format: "%.1f mm", total)
+    private var header: some View {
+        let summary = RainSummary(rain: entry.rain, now: entry.date)
+        return HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.location.name)
+                    .font(WidgetTheme.eyebrow)
+                    .tracking(0.6)
+                    .foregroundStyle(Color.owInkSecondary)
+                    .lineLimit(1)
+                    .unredacted()
+                Text(summary.hero)
+                    .font(WidgetTheme.hero(size: 28))
+                    .foregroundStyle(summary.tint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(summary.detail)
+                    .font(WidgetTheme.support)
+                    .foregroundStyle(Color.owInkSecondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            countdownPill
+        }
     }
-}
 
-/// 4 evenly-spaced timestamps along the bar chart.
-struct RainAxisLabels: View {
-    let samples: [RainSample]
-
-    var body: some View {
-        let stops = pick(from: samples, count: 4)
-        HStack {
-            ForEach(stops.indices, id: \.self) { i in
-                Text(format(stops[i]))
-                Spacer(minLength: 0)
-                    .hidden()
-                    .frame(maxWidth: i == stops.count - 1 ? 0 : .infinity)
+    private var countdownPill: some View {
+        let summary = RainSummary(rain: entry.rain, now: entry.date)
+        return VStack(alignment: .trailing, spacing: 0) {
+            if let minutes = summary.countdownMinutes {
+                Text("\(minutes)")
+                    .font(WidgetTheme.hero(size: 26))
+                    .foregroundStyle(summary.tint)
+                    .monospacedDigit()
+                Text("min")
+                    .font(WidgetTheme.meta)
+                    .foregroundStyle(Color.owInkSecondary)
+            } else {
+                Text(WidgetFormatting.updatedAt(entry.rain?.analysisAt))
+                    .font(WidgetTheme.meta)
+                    .foregroundStyle(Color.owInkSecondary)
             }
         }
     }
 
-    private func pick(from xs: [RainSample], count: Int) -> [RainSample] {
-        guard xs.count > count else { return xs }
-        let step = max(1, xs.count / (count - 1))
-        var out: [RainSample] = []
-        for i in stride(from: 0, to: xs.count, by: step) { out.append(xs[i]) }
-        if let last = xs.last, out.last?.minutesAhead != last.minutesAhead { out.append(last) }
-        return Array(out.prefix(count))
+    private var chartBlock: some View {
+        let snapshot = RainWindow.standard(from: entry.rain?.samples ?? [],
+                                           now: entry.date)
+        return RainBarChart(samples: snapshot.samples, nowIndex: snapshot.nowIndex)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
     }
 
-    private func format(_ s: RainSample) -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "HH:mm"
-        return fmt.string(from: s.validAt)
+    private var axis: some View {
+        let snapshot = RainWindow.standard(from: entry.rain?.samples ?? [],
+                                           now: entry.date)
+        return RainAxisLabels(samples: snapshot.samples,
+                              nowIndex: snapshot.nowIndex,
+                              now: entry.date)
+            .font(WidgetTheme.meta)
+            .foregroundStyle(Color.owInkSecondary)
+    }
+}
+
+// MARK: - Axis labels with "Nu" marker
+
+struct RainAxisLabels: View {
+    let samples: [RainSample]
+    let nowIndex: Int?
+    let now: Date
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(stops.enumerated()), id: \.offset) { _, stop in
+                Text(label(for: stop))
+                    .frame(maxWidth: .infinity, alignment: stop.alignment)
+            }
+        }
+    }
+
+    private struct Stop {
+        let sample: RainSample
+        let isNow: Bool
+        let alignment: Alignment
+    }
+
+    private var stops: [Stop] {
+        guard samples.count > 1 else { return [] }
+        var result: [Stop] = []
+        if let first = samples.first {
+            result.append(.init(sample: first, isNow: false, alignment: .leading))
+        }
+        if let idx = nowIndex, idx > 0 && idx < samples.count - 1 {
+            result.append(.init(sample: samples[idx], isNow: true, alignment: .center))
+        }
+        let midIdx = samples.count / 2
+        if midIdx != nowIndex {
+            result.append(.init(sample: samples[midIdx], isNow: false, alignment: .center))
+        }
+        if let last = samples.last {
+            result.append(.init(sample: last, isNow: false, alignment: .trailing))
+        }
+        return result
+    }
+
+    private func label(for stop: Stop) -> String {
+        if stop.isNow { return "Nu" }
+        return WidgetFormatting.hhmm(stop.sample.validAt)
     }
 }

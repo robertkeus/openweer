@@ -12,7 +12,7 @@ from starlette.middleware.gzip import GZipMiddleware
 
 from openweer import __version__
 from openweer.api.dependencies import AppState
-from openweer.api.routes import chat, forecast, frames, health, rain, weather
+from openweer.api.routes import chat, devices, forecast, frames, health, rain, weather
 from openweer.api.security import SecurityHeadersMiddleware
 from openweer.settings import Settings, get_settings
 
@@ -23,8 +23,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        app.state.openweer = AppState.build(cfg)
-        yield
+        state = AppState.build(cfg)
+        app.state.openweer = state
+        try:
+            yield
+        finally:
+            state.devices.close()
 
     app = FastAPI(
         title="OpenWeer API",
@@ -59,6 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(weather.router)
     app.include_router(forecast.router)
     app.include_router(chat.router)
+    app.include_router(devices.router)
 
     # ---- /tiles/* static files (dev convenience; Caddy bypasses this in prod) ----
     tiles_dir = cfg.data_dir / "tiles"

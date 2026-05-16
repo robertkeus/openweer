@@ -11,6 +11,7 @@ from pathlib import Path
 
 from fastapi import Request
 
+from openweer.devices.repository import DeviceRepository
 from openweer.ingest.storage import IngestStorage
 from openweer.knmi.datasets import get_dataset
 from openweer.settings import Settings, get_settings
@@ -24,13 +25,20 @@ class AppState:
     settings: Settings
     ingest: IngestStorage
     frames_manifest: ManifestStore
+    devices: DeviceRepository
 
     @classmethod
     def build(cls, settings: Settings) -> AppState:
         data_dir: Path = settings.data_dir
         ingest = IngestStorage(data_dir)
         frames_manifest = ManifestStore(data_dir / "manifests" / "frames.json")
-        return cls(settings=settings, ingest=ingest, frames_manifest=frames_manifest)
+        devices = DeviceRepository.open(data_dir / "devices.db")
+        return cls(
+            settings=settings,
+            ingest=ingest,
+            frames_manifest=frames_manifest,
+            devices=devices,
+        )
 
 
 def get_state(request: Request) -> AppState:

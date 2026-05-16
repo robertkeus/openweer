@@ -55,7 +55,7 @@ struct LocationBar: View {
     }
 }
 
-private struct LocationSearchSheet: View {
+struct LocationSearchSheet: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     let onPick: (CLLocationCoordinate2D, String) -> Void
