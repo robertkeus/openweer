@@ -21,6 +21,12 @@ x-python-base: &python-base
     OPENWEER_LOG_LEVEL: ${OPENWEER_LOG_LEVEL:-INFO}
   volumes:
     - openweer-data:/data
+    # APNs auth key (.p8) for rain push notifications. The host dir is
+    # owned by the openweer user and the .p8 inside is chmod 600. The
+    # ingest service is the only one that needs it (PusherLoop), but we
+    # mount it on the base so api/tiler containers are identical and can
+    # do test sends via the `openweer.devices` CLI if needed.
+    - ./secrets:/secrets:ro
   restart: unless-stopped
 
 services:

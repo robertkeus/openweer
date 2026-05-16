@@ -32,6 +32,9 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+# APNs auth keys + any other private signing material.
+secrets/
+*.p8
 # Match any `data/` directory anywhere in the tree (root, api/, etc.).
 # Runtime KNMI downloads, generated tiles, and manifests must never be committed.
 **/data/
