@@ -340,19 +340,34 @@ def _read_tile(
     r0c = np.clip(r0, 0, src_h - 1)
     r1c = np.clip(r1, 0, src_h - 1)
 
-    # Four pre-coloured RGBA corner samples — blend works directly on visible pixels,
-    # transparency included so rain edges feather instead of cliff-edging.
-    tl = rgba[np.ix_(r0c, c0c)].astype(np.float32)
-    tr = rgba[np.ix_(r0c, c1c)].astype(np.float32)
-    bl = rgba[np.ix_(r1c, c0c)].astype(np.float32)
-    br = rgba[np.ix_(r1c, c1c)].astype(np.float32)
+    # Four pre-coloured RGBA corner samples. Naïvely bilinear-blending all four
+    # channels mixes adjacent palette colours — e.g. dark-blue (31,93,208) next
+    # to yellow (245,213,45) averages to olive (138,153,126), painting green on
+    # rain-band boundaries that have no green in the palette. So we keep alpha
+    # bilinear (rain edges still feather instead of cliff-edging) but pick the
+    # nearest corner's RGB so bands stay crisp palette colours.
+    tl = rgba[np.ix_(r0c, c0c)]
+    tr = rgba[np.ix_(r0c, c1c)]
+    bl = rgba[np.ix_(r1c, c0c)]
+    br = rgba[np.ix_(r1c, c1c)]
 
-    wx = fx[None, :, None]
-    wy = fy[:, None, None]
-    top = tl * (1 - wx) + tr * wx
-    bot = bl * (1 - wx) + br * wx
-    blended = top * (1 - wy) + bot * wy
-    tile = (blended + 0.5).astype(np.uint8)
+    # Nearest-corner RGB. Vectorised via per-axis "is left half / top half" masks.
+    use_left = (fx < 0.5)[None, :, None]
+    use_top = (fy < 0.5)[:, None, None]
+    top_row_rgb = np.where(use_left, tl[..., :3], tr[..., :3])
+    bot_row_rgb = np.where(use_left, bl[..., :3], br[..., :3])
+    rgb = np.where(use_top, top_row_rgb, bot_row_rgb)
+
+    # Bilinear alpha so the rain edge still feathers smoothly.
+    wx = fx[None, :]
+    wy = fy[:, None]
+    a_top = tl[..., 3].astype(np.float32) * (1 - wx) + tr[..., 3].astype(np.float32) * wx
+    a_bot = bl[..., 3].astype(np.float32) * (1 - wx) + br[..., 3].astype(np.float32) * wx
+    a = a_top * (1 - wy) + a_bot * wy
+
+    tile = np.empty((TILE_SIZE, TILE_SIZE, 4), dtype=np.uint8)
+    tile[..., :3] = rgb
+    tile[..., 3] = (a + 0.5).astype(np.uint8)
 
     full_mask = row_mask[:, None] & col_mask[None, :]
     tile[~full_mask] = 0
