@@ -302,6 +302,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           <WeatherTab
             weather={weather}
             forecast={forecast}
+            coord={{ lat: location.lat, lon: location.lon }}
             loading={weatherLoading}
             errorMessage={weatherErrMsg}
             forecastErrorMessage={forecastErrMsg}

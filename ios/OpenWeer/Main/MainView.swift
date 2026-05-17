@@ -10,6 +10,7 @@ struct MainView: View {
     @State private var detent: PresentationDetent = .height(220)
     @State private var sheetPresented: Bool = true
     @State private var chatPresented = false
+    @State private var selectedDay: DailyForecast?
     @State private var locationService = LocationService.shared
     @State private var pendingPanTask: Task<Void, Never>?
     @State private var loadTask: Task<Void, Never>?
@@ -153,6 +154,10 @@ struct MainView: View {
             AiChatPanel()
                 .environment(appState)
         }
+        .sheet(item: $selectedDay) { day in
+            DayDetailSheet(day: day)
+                .environment(appState)
+        }
     }
 
     /// Frames currently visible on the slider — filtered by horizon so picking
@@ -179,7 +184,9 @@ struct MainView: View {
                     WeatherNowCard(response: weather)
                 }
                 if let forecast = state.forecast {
-                    ForecastList(response: forecast)
+                    ForecastList(response: forecast) { day in
+                        selectedDay = day
+                    }
                 }
             }
             .padding(.horizontal, 16)

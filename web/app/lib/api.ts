@@ -170,6 +170,34 @@ export const ForecastResponseSchema = z.object({
 export type DailyForecast = z.infer<typeof DailyForecastSchema>;
 export type ForecastResponse = z.infer<typeof ForecastResponseSchema>;
 
+const HourlySlotSchema = z.object({
+  time: z.string(),
+  weather_code: z.number().int().nullable(),
+  temperature_c: z.number().nullable(),
+  apparent_temperature_c: z.number().nullable(),
+  precipitation_mm: z.number().nullable(),
+  precipitation_probability_pct: z.number().int().nullable(),
+  wind_speed_kph: z.number().nullable(),
+  wind_direction_deg: z.number().int().nullable(),
+  wind_gusts_kph: z.number().nullable(),
+  relative_humidity_pct: z.number().int().nullable(),
+  cloud_cover_pct: z.number().int().nullable(),
+  uv_index: z.number().nullable(),
+  is_day: z.boolean().nullable(),
+  source: z.string().nullable().optional(),
+});
+
+export const HourlyForecastResponseSchema = z.object({
+  lat: z.number(),
+  lon: z.number(),
+  source: z.string(),
+  timezone: z.string(),
+  hours: z.array(HourlySlotSchema),
+});
+
+export type HourlySlot = z.infer<typeof HourlySlotSchema>;
+export type HourlyForecastResponse = z.infer<typeof HourlyForecastResponseSchema>;
+
 // ---- public API ----
 
 export const api = {
@@ -189,5 +217,10 @@ export const api = {
     fetchJson(
       `/api/forecast/${lat.toFixed(4)}/${lon.toFixed(4)}`,
       ForecastResponseSchema,
+    ),
+  forecastHourly: (lat: number, lon: number) =>
+    fetchJson(
+      `/api/forecast/${lat.toFixed(4)}/${lon.toFixed(4)}/hourly`,
+      HourlyForecastResponseSchema,
     ),
 };

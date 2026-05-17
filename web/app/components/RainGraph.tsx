@@ -6,6 +6,7 @@
 import { useState, type ReactNode } from "react";
 import type { RainSample } from "~/lib/api";
 import { formatHm, formatMmPerHour, rainVerdict } from "~/lib/format";
+import { rainColor } from "~/lib/rain-color";
 
 interface Props {
   samples: readonly RainSample[];
@@ -34,19 +35,6 @@ function maxBound(samples: readonly RainSample[]): number {
   const observed = Math.max(...samples.map((s) => s.mm_per_h), 0);
   // Always show at least 2 mm/h on the y-axis so dry forecasts have visual context.
   return Math.max(2.0, Math.ceil(observed * 1.2));
-}
-
-function colorFor(mm: number): string {
-  // Mirrors the backend colormap stops at 0.1 / 0.5 / 1 / 2 / 5 / 10 / 20 / 50.
-  if (mm < 0.1) return "var(--color-no-rain)";
-  if (mm < 0.5) return "rgb(155,195,241)";
-  if (mm < 1.0) return "rgb(92,142,232)";
-  if (mm < 2.0) return "rgb(31,93,208)";
-  if (mm < 5.0) return "rgb(245,213,45)";
-  if (mm < 10.0) return "rgb(245,159,45)";
-  if (mm < 20.0) return "rgb(230,53,61)";
-  if (mm < 50.0) return "rgb(163,21,31)";
-  return "rgb(192,38,211)";
 }
 
 export function RainGraph({ samples: input, height = 140 }: Props) {
@@ -123,7 +111,7 @@ export function RainGraph({ samples: input, height = 140 }: Props) {
                 y={y}
                 width={barWidth}
                 height={h}
-                fill={colorFor(s.mm_per_h)}
+                fill={rainColor(s.mm_per_h)}
                 rx="0.4"
                 opacity={hovered !== null && !isHovered ? 0.55 : 1}
               />

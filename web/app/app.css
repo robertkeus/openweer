@@ -183,6 +183,29 @@ body {
   --sheet-full: 86vh;
 }
 
+/* Thin custom scrollbar for the horizontal hour-strip and any other
+   in-card horizontal scroller. Default browser bars are bulky and break
+   the panel's design language. */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-ink-700) 40%, transparent)
+    transparent;
+}
+.thin-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--color-ink-700) 30%, transparent);
+  border-radius: 9999px;
+}
+.thin-scroll:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--color-ink-700) 55%, transparent);
+}
+
 /* Timeline panel — more opaque than glass-card so the bars and controls
    pop against the map background. */
 .timeline-panel {

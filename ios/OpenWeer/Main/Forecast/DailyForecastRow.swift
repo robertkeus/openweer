@@ -38,9 +38,14 @@ struct DailyForecastRow: View {
             }
             .monospacedDigit()
             .frame(width: 76, alignment: .trailing)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.owInkSecondary.opacity(0.6))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 

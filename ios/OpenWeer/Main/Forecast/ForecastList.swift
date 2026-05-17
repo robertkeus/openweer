@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ForecastList: View {
     let response: ForecastResponse
+    var onSelect: ((DailyForecast) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -13,7 +14,14 @@ struct ForecastList: View {
 
             VStack(spacing: 0) {
                 ForEach(Array(response.days.enumerated()), id: \.element.id) { idx, day in
-                    DailyForecastRow(day: day, index: idx)
+                    Button {
+                        onSelect?(day)
+                    } label: {
+                        DailyForecastRow(day: day, index: idx)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("Open de details voor deze dag")
                     if idx < response.days.count - 1 {
                         Divider()
                             .background(Color.owInkSecondary.opacity(0.15))

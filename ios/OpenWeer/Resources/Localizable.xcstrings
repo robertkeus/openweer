@@ -255,6 +255,9 @@
         }
       }
     },
+    "Details" : {
+
+    },
     "Droog" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -489,6 +492,9 @@
     "min" : {
 
     },
+    "min %@" : {
+
+    },
     "Nat" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -562,6 +568,9 @@
           }
         }
       }
+    },
+    "Per uur" : {
+
     },
     "Probeer een andere zoekopdracht in Nederland." : {
 
@@ -704,6 +713,9 @@
           }
         }
       }
+    },
+    "Regen per uur" : {
+
     },
     "Resultaten" : {
 

@@ -12,7 +12,16 @@ from starlette.middleware.gzip import GZipMiddleware
 
 from openweer import __version__
 from openweer.api.dependencies import AppState
-from openweer.api.routes import chat, devices, forecast, frames, health, rain, weather
+from openweer.api.routes import (
+    chat,
+    devices,
+    forecast,
+    forecast_hourly,
+    frames,
+    health,
+    rain,
+    weather,
+)
 from openweer.api.security import SecurityHeadersMiddleware
 from openweer.settings import Settings, get_settings
 
@@ -62,6 +71,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(rain.router)
     app.include_router(weather.router)
     app.include_router(forecast.router)
+    app.include_router(forecast_hourly.router)
     app.include_router(chat.router)
     app.include_router(devices.router)
 

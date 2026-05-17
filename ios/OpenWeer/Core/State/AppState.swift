@@ -52,7 +52,13 @@ final class AppState {
     }
 
     var coordinate: CLLocationCoordinate2D {
-        didSet { mirrorLocationToAppGroup() }
+        didSet {
+            mirrorLocationToAppGroup()
+            // Hourly is keyed to the current coordinate; drop it so the
+            // day-detail sheet refetches when the user moves the map.
+            hourlyForecast = nil
+            hourlyForecastLoadedAt = nil
+        }
     }
     var locationName: String {
         didSet { mirrorLocationToAppGroup() }
@@ -83,6 +89,11 @@ final class AppState {
             WidgetCenter.shared.reloadTimelines(ofKind: "nl.openweer.widget.forecast")
         }
     }
+    /// Per-hour forecast fetched lazily on first day-detail tap. Invalidated
+    /// when the user changes location; no widget consumes this data, so no
+    /// snapshot/timeline reload here.
+    var hourlyForecast: HourlyForecastResponse?
+    var hourlyForecastLoadedAt: Date?
 
     init() {
         let storedTheme = UserDefaults.standard.string(forKey: "theme").flatMap(ThemePreference.init(rawValue:))

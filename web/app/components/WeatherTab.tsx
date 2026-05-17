@@ -1,8 +1,10 @@
 /**
- * Weer tab — current observations from the nearest KNMI station + a
- * placeholder for the multi-day outlook (HARMONIE pipeline lands later).
+ * Weer tab — current observations from the nearest KNMI station + the
+ * 8-day daily outlook. Tapping a day opens a drill-down dialog with
+ * hour-by-hour conditions (HourlyRainChart, stats grid, etc.).
  */
 
+import { useState } from "react";
 import type {
   ConditionKind,
   CurrentWeather,
@@ -11,10 +13,16 @@ import type {
   WeatherResponse,
 } from "~/lib/api";
 import { formatHm } from "~/lib/format";
+import { ConditionGlyph } from "~/components/ConditionGlyph";
+import {
+  DayDetailView,
+  type HourlyCacheEntry,
+} from "~/components/DayDetail/DayDetailView";
 
 interface Props {
   weather: WeatherResponse | null;
   forecast: ForecastResponse | null;
+  coord: { lat: number; lon: number };
   loading?: boolean;
   errorMessage?: string;
   forecastErrorMessage?: string;
@@ -23,21 +31,48 @@ interface Props {
 export function WeatherTab({
   weather,
   forecast,
+  coord,
   loading,
   errorMessage,
   forecastErrorMessage,
 }: Props) {
+  const [selectedDay, setSelectedDay] = useState<DailyForecast | null>(null);
+  // Cache the hourly response so re-opening a day within ~10 min renders
+  // synchronously. The dialog ignores entries whose lat/lon don't match
+  // the active coord, so no explicit invalidation is needed on location
+  // change.
+  const [hourlyCache, setHourlyCache] = useState<HourlyCacheEntry | null>(null);
+
   if (errorMessage) {
     return <p className="p-4 text-sm text-[--color-ink-700]">{errorMessage}</p>;
   }
   if (loading || !weather) {
     return <p className="p-4 text-sm text-[--color-ink-700]">Weer laden…</p>;
   }
+
+  // When a day is selected, the same panel slot renders the detail view
+  // instead of the daily list — no modal, no backdrop. "Terug" goes back.
+  if (selectedDay) {
+    return (
+      <DayDetailView
+        day={selectedDay}
+        coord={coord}
+        hourlyCache={hourlyCache}
+        onClose={() => setSelectedDay(null)}
+        onHourlyLoaded={setHourlyCache}
+      />
+    );
+  }
+
   const { current, station } = weather;
   return (
     <div className="p-4 space-y-5">
       <NowCard current={current} stationName={station.name} />
-      <ComingDays forecast={forecast} errorMessage={forecastErrorMessage} />
+      <ComingDays
+        forecast={forecast}
+        errorMessage={forecastErrorMessage}
+        onSelect={setSelectedDay}
+      />
       <StatGrid current={current} />
       <p className="text-[11px] text-[--color-ink-700]">
         Waarneming {formatHm(current.observed_at)} · KNMI station{" "}
@@ -139,9 +174,11 @@ function StatGrid({ current }: { current: CurrentWeather }) {
 function ComingDays({
   forecast,
   errorMessage,
+  onSelect,
 }: {
   forecast: ForecastResponse | null;
   errorMessage?: string;
+  onSelect: (day: DailyForecast) => void;
 }) {
   return (
     <section aria-labelledby="coming-days">
@@ -160,7 +197,9 @@ function ComingDays({
       ) : (
         <ul className="mt-2 divide-y divide-[--color-border] rounded-2xl border border-[--color-border] overflow-hidden">
           {forecast.days.map((day, i) => (
-            <DayRow key={day.date} day={day} index={i} />
+            <li key={day.date}>
+              <DayRow day={day} index={i} onSelect={onSelect} />
+            </li>
           ))}
         </ul>
       )}
@@ -168,10 +207,24 @@ function ComingDays({
   );
 }
 
-function DayRow({ day, index }: { day: DailyForecast; index: number }) {
+function DayRow({
+  day,
+  index,
+  onSelect,
+}: {
+  day: DailyForecast;
+  index: number;
+  onSelect: (day: DailyForecast) => void;
+}) {
   const kind = wmoToCondition(day.weather_code);
   return (
-    <li className="flex items-center gap-3 px-3 py-2.5 text-sm">
+    <button
+      type="button"
+      onClick={() => onSelect(day)}
+      aria-haspopup="dialog"
+      aria-label={`Details voor ${dayLabel(day.date, index)}`}
+      className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left hover:bg-[--color-border]/40 focus:bg-[--color-border]/40 focus:outline-none transition"
+    >
       <span className="w-16 flex-none text-[--color-ink-900] font-medium">
         {dayLabel(day.date, index)}
       </span>
@@ -193,7 +246,13 @@ function DayRow({ day, index }: { day: DailyForecast; index: number }) {
           {fmtTemp(day.temperature_min_c)}
         </span>
       </span>
-    </li>
+      <span
+        aria-hidden="true"
+        className="flex-none text-[--color-ink-700] opacity-60"
+      >
+        ›
+      </span>
+    </button>
   );
 }
 
@@ -255,130 +314,4 @@ function fmtCloudVisibility(c: CurrentWeather): string {
     );
   }
   return parts.length ? parts.join(" · ") : "—";
-}
-
-function ConditionGlyph({
-  kind,
-  className,
-}: {
-  kind: ConditionKind;
-  className?: string;
-}) {
-  // Unique ids per render so multiple glyphs on a page don't clash.
-  const id = (suffix: string) =>
-    `${suffix}-${Math.random().toString(36).slice(2, 8)}`;
-  const sunGrad = id("sun");
-  const cloudGrad = id("cloud");
-  return (
-    <svg
-      viewBox="0 0 64 64"
-      fill="none"
-      className={className}
-      aria-hidden="true"
-    >
-      <defs>
-        <radialGradient
-          id={sunGrad}
-          cx="32"
-          cy="28"
-          r="14"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0" stopColor="oklch(0.95 0.14 85)" />
-          <stop offset="1" stopColor="var(--color-sun-400)" />
-        </radialGradient>
-        <linearGradient id={cloudGrad} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="oklch(1 0 0)" stopOpacity="0.95" />
-          <stop
-            offset="1"
-            stopColor="oklch(0.86 0.012 250)"
-            stopOpacity="0.95"
-          />
-        </linearGradient>
-      </defs>
-
-      {(kind === "clear" || kind === "partly-cloudy") && (
-        <>
-          <circle cx="32" cy="28" r="11" fill={`url(#${sunGrad})`} />
-          <g
-            stroke="var(--color-sun-400)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            opacity="0.85"
-          >
-            <line x1="32" y1="6" x2="32" y2="11" />
-            <line x1="50" y1="28" x2="55" y2="28" />
-            <line x1="9" y1="28" x2="14" y2="28" />
-            <line x1="46" y1="14" x2="50" y2="10" />
-            <line x1="18" y1="14" x2="14" y2="10" />
-          </g>
-        </>
-      )}
-      {(kind === "partly-cloudy" ||
-        kind === "cloudy" ||
-        kind === "rain" ||
-        kind === "drizzle" ||
-        kind === "thunder" ||
-        kind === "snow" ||
-        kind === "fog" ||
-        kind === "unknown") && (
-        <g
-          fill={`url(#${cloudGrad})`}
-          stroke="oklch(0.78 0.012 250)"
-          strokeWidth="0.8"
-          strokeLinejoin="round"
-        >
-          <path d="M14 50c-5 0-9-4-9-8.6 0-4.2 3-7.7 7.2-8.5a10 10 0 0119.2 0.6 7.5 7.5 0 014.6 13.2 6 6 0 01-5 3.3 7 7 0 01-5.4 0z" />
-        </g>
-      )}
-      {kind === "rain" && (
-        <g
-          stroke="var(--color-accent-600)"
-          strokeWidth="2"
-          strokeLinecap="round"
-        >
-          <line x1="20" y1="54" x2="18" y2="60" />
-          <line x1="28" y1="54" x2="26" y2="60" />
-          <line x1="36" y1="54" x2="34" y2="60" />
-        </g>
-      )}
-      {kind === "drizzle" && (
-        <g
-          stroke="var(--color-accent-500)"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        >
-          <line x1="20" y1="54" x2="19" y2="58" />
-          <line x1="28" y1="54" x2="27" y2="58" />
-          <line x1="36" y1="54" x2="35" y2="58" />
-        </g>
-      )}
-      {kind === "snow" && (
-        <g fill="var(--color-ink-700)">
-          <circle cx="20" cy="56" r="1.4" />
-          <circle cx="28" cy="58" r="1.4" />
-          <circle cx="36" cy="56" r="1.4" />
-        </g>
-      )}
-      {kind === "thunder" && (
-        <path
-          d="M30 50l-3 7h4l-2 6 7-9h-4l2-4z"
-          fill="var(--color-sun-400)"
-          stroke="oklch(0.55 0.18 75)"
-          strokeWidth="0.8"
-          strokeLinejoin="round"
-        />
-      )}
-      {kind === "fog" && (
-        <g
-          stroke="var(--color-ink-500)"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-        >
-          <line x1="10" y1="56" x2="42" y2="56" />
-          <line x1="14" y1="60" x2="46" y2="60" />
-        </g>
-      )}
-    </svg>
-  );
 }
