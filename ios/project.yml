@@ -60,6 +60,9 @@ targets:
         UIBackgroundModes:
           - remote-notification
           - fetch
+          - processing
+        BGTaskSchedulerPermittedIdentifiers:
+          - nl.openweer.app.refresh
         NSSupportsLiveActivities: true
         ITSAppUsesNonExemptEncryption: false
         UIAppFonts:

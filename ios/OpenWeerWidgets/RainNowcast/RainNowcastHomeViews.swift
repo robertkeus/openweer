@@ -97,7 +97,7 @@ struct RainNowcastMedium: View {
                     .font(WidgetTheme.meta)
                     .foregroundStyle(Color.owInkSecondary)
             } else {
-                Text(WidgetFormatting.updatedAt(entry.rain?.analysisAt))
+                Text(WidgetFormatting.updatedAt(entry.rain?.analysisAt, now: entry.date))
                     .font(WidgetTheme.meta)
                     .foregroundStyle(Color.owInkSecondary)
             }
@@ -125,6 +125,9 @@ struct RainNowcastMedium: View {
 
 // MARK: - Axis labels with "Nu" marker
 
+/// Relative axis (e.g. "Nu", "+30", "+60", "+120"). Absolute clock times
+/// would lie the moment WidgetKit shows a stale entry; minute offsets stay
+/// readable regardless of refresh staleness.
 struct RainAxisLabels: View {
     let samples: [RainSample]
     let nowIndex: Int?
@@ -166,6 +169,9 @@ struct RainAxisLabels: View {
 
     private func label(for stop: Stop) -> String {
         if stop.isNow { return "Nu" }
-        return WidgetFormatting.hhmm(stop.sample.validAt)
+        let minutes = Int((stop.sample.validAt.timeIntervalSince(now) / 60).rounded())
+        if minutes == 0 { return "Nu" }
+        let sign = minutes > 0 ? "+" : "−"
+        return "\(sign)\(abs(minutes))"
     }
 }

@@ -126,7 +126,8 @@ struct CurrentConditionsMedium: View {
         return "\(bft) bft"
     }
     private var updatedAt: String {
-        let value = WidgetFormatting.updatedAt(entry.weather?.current.observedAt)
+        let value = WidgetFormatting.updatedAt(entry.weather?.current.observedAt,
+                                               now: entry.date)
         return value.isEmpty ? "" : "Bijgewerkt \(value)"
     }
 }
@@ -150,10 +151,17 @@ enum WidgetFormatting {
         }
     }
 
-    /// "11:23" timestamp prefixed for a "bijgewerkt" caption.
-    static func updatedAt(_ date: Date?) -> String {
+    /// Relative "X min geleden" / "X uur geleden" label. Absolute clock
+    /// times mislead when WidgetKit shows a stale entry; relative phrasing
+    /// stays truthful no matter how old the data turns out to be.
+    static func updatedAt(_ date: Date?, now: Date = Date()) -> String {
         guard let date else { return "" }
-        return hhmm(date)
+        let seconds = max(0, Int(now.timeIntervalSince(date)))
+        if seconds < 60 { return "net" }
+        let minutes = seconds / 60
+        if minutes < 60 { return "\(minutes) min geleden" }
+        let hours = minutes / 60
+        return "\(hours) u geleden"
     }
 
     /// 15-minute go/no-go verdict — short enough for a small widget caption.

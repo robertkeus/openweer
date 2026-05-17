@@ -40,7 +40,7 @@ struct RainMapMedium: View {
                 .background(Color.black.opacity(0.35), in: Capsule(style: .continuous))
                 .unredacted()
             Spacer()
-            Text(WidgetFormatting.updatedAt(entry.rain?.analysisAt))
+            Text(WidgetFormatting.updatedAt(entry.rain?.analysisAt, now: entry.date))
                 .font(WidgetTheme.meta)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 8)
