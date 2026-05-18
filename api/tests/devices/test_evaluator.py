@@ -177,6 +177,54 @@ def test_dedupe_key_is_stable_for_same_bucket(
     assert a[0].dedupe_key == b[0].dedupe_key
 
 
+def test_dedupe_key_stable_across_rolling_nowcast(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Sustained rain shouldn't change the dedupe key as the nowcast advances.
+
+    Pre-fix this was the bug behind ~6 pushes/hour: the dedupe key baked
+    in the 5-min bucket of the *first* triggering sample, which rolls
+    forward by 5 min every tick during continuous rain, minting a new
+    key each cycle and slipping past the cooldown.
+    """
+    # Tick 1: rain starts at minute +15 (sample index 3) — bucket 14:15.
+    _patch_nowcast(monkeypatch, {(52.37, 4.89): [0, 0, 0, 2.0, 2.0, 2.0, 2.0]})
+    tick1 = evaluate(
+        hdf5_path=tmp_path / "x.h5",
+        devices=[_device(favorites=[_favorite()])],
+        now=NOW,
+    )
+    # Tick 2: same rain field, but the window slid forward by 5 min so
+    # the first triggering sample is now at minute +10 — bucket 14:10.
+    _patch_nowcast(monkeypatch, {(52.37, 4.89): [0, 0, 2.0, 2.0, 2.0, 2.0, 0]})
+    tick2 = evaluate(
+        hdf5_path=tmp_path / "x.h5",
+        devices=[_device(favorites=[_favorite()])],
+        now=NOW,
+    )
+    assert tick1[0].dedupe_key == tick2[0].dedupe_key
+
+
+def test_dedupe_key_changes_on_intensity_escalation(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """An escalation (moderate → heavy) should mint a new key so the
+    cooldown doesn't swallow a "it just got worse" alert."""
+    _patch_nowcast(monkeypatch, {(52.37, 4.89): [0, 0, 2.0]})  # moderate
+    moderate = evaluate(
+        hdf5_path=tmp_path / "x.h5",
+        devices=[_device(favorites=[_favorite(threshold="moderate")])],
+        now=NOW,
+    )
+    _patch_nowcast(monkeypatch, {(52.37, 4.89): [0, 0, 15.0]})  # heavy
+    heavy = evaluate(
+        hdf5_path=tmp_path / "x.h5",
+        devices=[_device(favorites=[_favorite(threshold="moderate")])],
+        now=NOW,
+    )
+    assert moderate[0].dedupe_key != heavy[0].dedupe_key
+
+
 def test_multi_device_batched_sampling(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

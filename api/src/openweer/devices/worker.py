@@ -30,7 +30,11 @@ class PusherLoop:
     apns: APNsClient
     storage: IngestStorage
     interval_seconds: int = 300
-    dedupe_window_minutes: int = 30
+    # Cooldown per (device, favorite, intensity-tier). Three hours so a
+    # sustained rain event delivers one push, not ~36 (one every 5 min
+    # for the duration). Escalations into a new intensity tier still
+    # break through — see the comment in evaluator._evaluate_one.
+    dedupe_window_minutes: int = 180
 
     async def run(self) -> None:
         """Run forever; cancels propagate through the TaskGroup."""

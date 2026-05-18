@@ -85,8 +85,17 @@ def _evaluate_one(
     if triggering is None:
         return None
     classified = _classify_intensity(triggering.mm_per_h)
-    bucket = _five_minute_bucket(triggering.valid_at).isoformat()
-    dedupe_key = f"{favorite.favorite_id}:{bucket}:{classified}"
+    # Cooldown key is (favorite, intensity) — **without** the 5-min bucket
+    # of the triggering sample. The bucket used to be part of the key so
+    # that "new rain at 14:30" and "new rain at 14:35" looked distinct,
+    # but during sustained rain the first-triggering bucket rolls forward
+    # by 5 min every tick — so the key was changing every cycle and the
+    # user got a fresh push every 5 minutes for the same ongoing event
+    # (~6/hour, 30+ overnight). Dropping the bucket means the first push
+    # for "moderate at this favorite" suppresses all follow-ups within
+    # the cooldown window; an *escalation* (e.g. light → moderate, or
+    # moderate → heavy) still mints a new key and breaks through.
+    dedupe_key = f"{favorite.favorite_id}:{classified}"
     return Alert(
         device_id=device.device_id,
         favorite=favorite,
@@ -104,12 +113,6 @@ def _classify_intensity(mm_per_h: float) -> Intensity:
     if mm_per_h >= INTENSITY_MM_PER_H["moderate"]:
         return "moderate"
     return "light"
-
-
-def _five_minute_bucket(at: datetime) -> datetime:
-    """Floor `at` to the nearest 5-minute bucket so dedupe groups stable samples."""
-    minute = (at.minute // 5) * 5
-    return at.replace(minute=minute, second=0, microsecond=0)
 
 
 def _in_quiet_hours(favorite: Favorite, now: datetime) -> bool:
