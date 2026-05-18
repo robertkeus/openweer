@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -75,6 +76,11 @@ async def chat(
         upstream_url = assert_greenpt_url(_GREENPT_URL)
 
     cities_block = await _build_cities_block(state, payload.context.language)
+    # Anchor the prompt to wall-clock now so the model can tell observed-past
+    # samples (minutes_ahead < 0) from forecast samples. Without this, the AI
+    # used to read past rain peaks as current advice — "vandaag wordt het
+    # nat" three hours after the shower already cleared.
+    now = datetime.now(UTC)
 
     body = {
         "model": settings.greenpt_model,
@@ -83,7 +89,7 @@ async def chat(
             {
                 "role": "system",
                 "content": build_system_prompt(
-                    payload.context, cities_block=cities_block
+                    payload.context, cities_block=cities_block, now=now
                 ),
             },
             *(turn.model_dump() for turn in payload.messages),

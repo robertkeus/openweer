@@ -73,6 +73,50 @@ def test_format_rain_context_empty_returns_dutch_fallback() -> None:
     assert "geen" in line.lower()
 
 
+def test_format_rain_context_ignores_past_peaks() -> None:
+    """Past observation samples (minutes_ahead < 0) must not bias the
+    forecast summary. Pre-fix, a heavy shower from 90 min ago was reported
+    as today's peak hours after it had cleared."""
+    samples = [
+        # Past: heavy rain 90 min ago — *should be ignored*.
+        ChatRainSample(
+            minutes_ahead=-90,
+            mm_per_h=12.0,
+            valid_at=datetime(2026, 5, 4, 10, 30, tzinfo=UTC),
+        ),
+        ChatRainSample(
+            minutes_ahead=-60,
+            mm_per_h=4.0,
+            valid_at=datetime(2026, 5, 4, 11, 0, tzinfo=UTC),
+        ),
+        # Future: dry next 2 h.
+        *[
+            ChatRainSample(
+                minutes_ahead=i * 5,
+                mm_per_h=0.0,
+                valid_at=datetime(2026, 5, 4, 12, i * 5 % 60, tzinfo=UTC),
+            )
+            for i in range(13)
+        ],
+    ]
+    line = format_rain_context(samples)
+    assert "12.0" not in line  # past peak must not bleed into the forecast
+    assert "droog" in line.lower()
+
+
+def test_format_rain_context_all_past_returns_no_forecast_fallback() -> None:
+    """If every sample is in the past, treat it like an empty forecast."""
+    samples = [
+        ChatRainSample(
+            minutes_ahead=-30,
+            mm_per_h=5.0,
+            valid_at=datetime(2026, 5, 4, 11, 30, tzinfo=UTC),
+        ),
+    ]
+    line = format_rain_context(samples)
+    assert "geen" in line.lower()
+
+
 def test_build_system_prompt_dutch_default() -> None:
     p = build_system_prompt(_ctx())
     assert "OpenWeer" in p
@@ -105,6 +149,22 @@ def test_build_system_prompt_mentions_cursor_when_set() -> None:
 def test_build_system_prompt_says_now_when_cursor_unset() -> None:
     p = build_system_prompt(_ctx(cursor_at=None))
     assert "nu" in p.lower()
+
+
+def test_build_system_prompt_includes_explicit_now_anchor_nl() -> None:
+    """The Dutch prompt must surface wall-clock now so the model can tell
+    past observations from forecasts."""
+    p = build_system_prompt(_ctx(), now=datetime(2026, 5, 4, 12, 35, tzinfo=UTC))
+    assert "Huidige tijd" in p
+    assert "12:35 UTC" in p
+
+
+def test_build_system_prompt_includes_explicit_now_anchor_en() -> None:
+    p = build_system_prompt(
+        _ctx(language="en"), now=datetime(2026, 5, 4, 12, 35, tzinfo=UTC)
+    )
+    assert "Current time" in p
+    assert "12:35 UTC" in p
 
 
 def test_major_cities_includes_amsterdam_and_utrecht() -> None:

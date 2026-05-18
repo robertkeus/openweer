@@ -81,14 +81,20 @@ class ChatContext(BaseModel):
 
 
 def format_rain_context(samples: Iterable[ChatRainSample]) -> str:
-    """Compact one-line summary of the forecast: peak, total mm, dry/wet share."""
-    samples = list(samples)
-    if not samples:
+    """Compact one-line summary of the *forecast*: peak, total mm, dry/wet share.
+
+    Filters out past samples so the peak reflects what's still to come, not
+    what happened. The slider now ships ~120 min of past observations along
+    with the nowcast, and unfiltered the peak would happily report "Piek 1.8
+    mm/u rond 08:00" three hours after the shower has cleared.
+    """
+    forward = [s for s in samples if s.minutes_ahead >= 0]
+    if not forward:
         return "Geen radar­voorspelling beschikbaar."
-    peak = max(samples, key=lambda s: s.mm_per_h)
-    total_mm = sum(s.mm_per_h for s in samples) / 12.0  # 5-min cadence → /12 = mm/h to mm
-    wet_count = sum(1 for s in samples if s.mm_per_h >= 0.1)
-    wet_share = wet_count / len(samples)
+    peak = max(forward, key=lambda s: s.mm_per_h)
+    total_mm = sum(s.mm_per_h for s in forward) / 12.0  # 5-min cadence → /12 = mm/h to mm
+    wet_count = sum(1 for s in forward if s.mm_per_h >= 0.1)
+    wet_share = wet_count / len(forward)
     if peak.mm_per_h < 0.1:
         return "Het blijft naar verwachting droog de komende 2 uur."
     peak_local = peak.valid_at.astimezone(UTC).strftime("%H:%M UTC")
@@ -154,6 +160,7 @@ def build_system_prompt(
     ctx: ChatContext,
     *,
     cities_block: str | None = None,
+    now: datetime | None = None,
 ) -> str:
     """The Dutch (or English) system prompt sent on every chat turn.
 
@@ -162,6 +169,8 @@ def build_system_prompt(
     is appended so the model can answer cross-city comparison questions.
     """
     rain_line = format_rain_context(ctx.samples)
+    now_utc = now.astimezone(UTC) if now is not None else datetime.now(UTC)
+    now_hm = now_utc.strftime("%H:%M UTC")
     if ctx.cursor_at is not None:
         cursor_hm = ctx.cursor_at.astimezone(UTC).strftime("%H:%M UTC")
         cursor_line = (
@@ -186,7 +195,9 @@ def build_system_prompt(
             "You are the OpenWeer assistant — a friendly weather coach for the "
             "Netherlands. Reply in clear English in 1-3 short paragraphs, with "
             "concrete advice based on the radar context below. Never invent "
-            "data; if you're unsure, say so.\n\n"
+            "data; if you're unsure, say so. Treat any radar timestamp earlier "
+            "than 'Current time' as past observation, not a forecast.\n\n"
+            f"Current time: {now_hm}.\n"
             f"Current location: {ctx.location_name} ({ctx.lat:.2f}, {ctx.lon:.2f}).\n"
             f"Forecast (next 2h): {rain_line}\n"
             f"{cursor_line_en}\n"
@@ -201,7 +212,10 @@ def build_system_prompt(
         "Je bent de OpenWeer-assistent — een vriendelijke weercoach voor "
         "Nederland. Antwoord in helder Nederlands in 1-3 korte alinea's, met "
         "concrete tips gebaseerd op de radarcontext hieronder. Verzin nooit "
-        "data; als je iets niet weet, zeg dat eerlijk.\n\n"
+        "data; als je iets niet weet, zeg dat eerlijk. Behandel elke "
+        "radartijd vóór 'Huidige tijd' als waarneming uit het verleden, niet "
+        "als verwachting.\n\n"
+        f"Huidige tijd: {now_hm}.\n"
         f"Huidige locatie: {ctx.location_name} ({ctx.lat:.2f}, {ctx.lon:.2f}).\n"
         f"Verwachting komende 2 uur: {rain_line}\n"
         f"{cursor_line}\n"
