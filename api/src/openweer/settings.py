@@ -75,7 +75,10 @@ class Settings(BaseSettings):
         default=300, ge=60, validation_alias="PUSHER_INTERVAL_SECONDS"
     )
     pusher_dedupe_window_minutes: int = Field(
-        default=30, ge=1, validation_alias="PUSHER_DEDUPE_WINDOW_MINUTES"
+        # Per-(device, favorite, intensity) cooldown. 3 h covers a typical
+        # rain event so the user gets one push, not ~36. See
+        # devices/evaluator.py for why the key dropped the time bucket.
+        default=180, ge=1, validation_alias="PUSHER_DEDUPE_WINDOW_MINUTES"
     )
 
     # ---- accessors that surface the raw key only at the I/O boundary ----
