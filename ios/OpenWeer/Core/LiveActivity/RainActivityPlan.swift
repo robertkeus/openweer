@@ -12,7 +12,15 @@ struct RainActivityPlan: Sendable {
                      weather: WeatherResponse?,
                      thresholdMmPerHour: Double,
                      horizonMinutes: Int) -> RainActivityPlan {
-        let withinHorizon = rain.samples.filter { $0.minutesAhead <= horizonMinutes }
+        // Forward-only window. Since the /api/rain payload now includes
+        // ~120 min of past observations (so the slider can render history),
+        // we must drop minutesAhead < 0 here — otherwise the "first sample
+        // above threshold" picks the *earliest historical* rainy moment and
+        // the activity locks its headline to a time hours in the past
+        // ("Regen om 05:05" at 08:14 with a permanent "0 min" countdown).
+        let withinHorizon = rain.samples.filter {
+            $0.minutesAhead >= 0 && $0.minutesAhead <= horizonMinutes
+        }
         let startsAt = withinHorizon.first { $0.mmPerHour >= thresholdMmPerHour }?.validAt
         let stopsAt: Date?
         if let startsAt {

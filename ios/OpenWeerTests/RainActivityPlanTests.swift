@@ -55,6 +55,52 @@ final class RainActivityPlanTests: XCTestCase {
             XCTAssertLessThanOrEqual(v, 50)
         }
     }
+
+    /// Regression for the stale-Live-Activity bug: with past observations
+    /// in the payload, the plan must ignore them when picking startsAt.
+    /// Pre-fix the activity locked onto a historical rain timestamp and
+    /// the countdown clamped to "0 min" forever.
+    func test_pastRain_isIgnoredForStartsAt() {
+        let base = Date()
+        var samples: [RainSample] = []
+        // Past: it was raining 90 min ago.
+        for i in -18 ..< 0 {
+            samples.append(sample(minute: i * 5, mm: i >= -12 ? 2.0 : 0, base: base))
+        }
+        // Future: dry for the whole horizon.
+        for i in 0 ..< 24 {
+            samples.append(sample(minute: i * 5, mm: 0, base: base))
+        }
+        let rain = RainResponse(lat: 52.37, lon: 4.90, analysisAt: base, samples: samples)
+        let plan = RainActivityPlan.from(rain: rain, weather: nil,
+                                         thresholdMmPerHour: 0.1, horizonMinutes: 120)
+        XCTAssertEqual(plan.action, .end)
+        XCTAssertNil(plan.state.startsAt,
+                     "Past rain must not become the activity's startsAt.")
+    }
+
+    func test_pastRain_doesNotMaskFutureStart() {
+        let base = Date()
+        var samples: [RainSample] = []
+        // Past rain.
+        for i in -18 ..< 0 {
+            samples.append(sample(minute: i * 5, mm: 2.0, base: base))
+        }
+        // Future: dry briefly, then rain at +25 min.
+        for i in 0 ..< 24 {
+            samples.append(sample(minute: i * 5, mm: i >= 5 ? 2.0 : 0, base: base))
+        }
+        let rain = RainResponse(lat: 52.37, lon: 4.90, analysisAt: base, samples: samples)
+        let plan = RainActivityPlan.from(rain: rain, weather: nil,
+                                         thresholdMmPerHour: 0.1, horizonMinutes: 120)
+        XCTAssertEqual(plan.action, .start)
+        if let startsAt = plan.state.startsAt {
+            XCTAssertGreaterThan(startsAt.timeIntervalSince(base), 0,
+                                 "startsAt must be in the future.")
+        } else {
+            XCTFail("expected a future startsAt")
+        }
+    }
 }
 
 final class RainOutlookTests: XCTestCase {
