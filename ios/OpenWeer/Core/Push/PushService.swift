@@ -46,7 +46,16 @@ final class PushService: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func handleRegistrationFailure(_ error: Error) {
-        log.error("APNs registration failed: \(error.localizedDescription)")
+        // The iOS Simulator stubs out APNs and `registerForRemoteNotifications`
+        // always fails on it with `com.apple.push-error` code 7 / errno 6
+        // ("no such device or address") — it's noise, not a real fault.
+        // Push works on a real device. Downgrade the log level on simulator so
+        // it doesn't clutter Xcode's console.
+#if targetEnvironment(simulator)
+        log.debug("APNs registration unavailable in simulator: \(error.localizedDescription, privacy: .public)")
+#else
+        log.error("APNs registration failed: \(error.localizedDescription, privacy: .public)")
+#endif
     }
 
     /// Current iOS notification authorization status for the app.
