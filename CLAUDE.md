@@ -20,7 +20,7 @@ This file is loaded automatically by Claude Code in every session for this repo.
 - **A07 Auth**: no user accounts in v1; if added later, use Argon2id, never plain bcrypt.
 - **A08 Integrity**: verify HDF5/GRIB downloads against KNMI's `Content-MD5` if provided; atomic-mv all file writes; never write directly into a path served to the public.
 - **A09 Logging**: structured JSON logs; never log API keys, raw lat/lon (round to 2 decimals for analytics); no PII.
-- **A10 SSRF**: allowlist `api.dataplatform.knmi.nl`, `mqtt.dataplatform.knmi.nl`, `nominatim.openstreetmap.org` only. Reject any other host before fetching.
+- **A10 SSRF**: allowlist `api.dataplatform.knmi.nl`, `mqtt.dataplatform.knmi.nl`, `nominatim.openstreetmap.org`, `api.greenpt.ai`, `api.open-meteo.com`, plus `*.amazonaws.com`/`*.dataplatform.knmi.nl` for KNMI pre-signed downloads only. Reject any other host before fetching.
 
 ### Code quality
 - **File length**: target <250 lines per file; hard cap 400. Split by responsibility, not arbitrarily.

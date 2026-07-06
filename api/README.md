@@ -42,7 +42,7 @@ Requires Python 3.12+ and [`uv`](https://docs.astral.sh/uv/).
 cd api
 uv sync --all-extras
 cp ../.env.example ../.env       # add KNMI_API_KEY
-uv run uvicorn openweer.api.app:app --reload --port 8000
+uv run uvicorn --factory openweer.api.app:create_app --reload --port 8000
 ```
 
 The ingest and tiler workers run as separate processes (the same way `docker compose` orchestrates them):
