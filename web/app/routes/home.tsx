@@ -230,7 +230,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     <div className="map-shell fixed inset-0 overflow-hidden">
       {/* Map fills the viewport. */}
       <div className="absolute inset-0">
-        {framesErrored ? (
+        {framesErrored && liveFrames.length === 0 ? (
           <div className="absolute inset-0 grid place-items-center p-8 text-sm text-[--color-ink-500] bg-gradient-to-br from-sky-50 via-white to-white">
             De radar is even niet bereikbaar — we proberen het automatisch
             opnieuw.
