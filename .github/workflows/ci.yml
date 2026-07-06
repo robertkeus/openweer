@@ -39,12 +39,8 @@ jobs:
       - name: Lint (ruff)
         run: uv run ruff check .
 
-      # mypy strict is configured in pyproject.toml but the codebase has
-      # pre-existing violations (see issue tracker). Run it for visibility,
-      # but don't block PRs until the backlog is cleared.
-      - name: Type-check (mypy, advisory)
+      - name: Type-check (mypy)
         run: uv run mypy src/
-        continue-on-error: true
 
       - name: Run tests (pytest)
         run: uv run pytest
