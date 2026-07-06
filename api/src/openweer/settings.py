@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -71,6 +71,12 @@ class Settings(BaseSettings):
     apns_environment: Literal["sandbox", "production"] = Field(
         default="sandbox", validation_alias="APNS_ENVIRONMENT"
     )
+
+    @field_validator("apns_key_id", "apns_team_id", "apns_private_key_path", mode="before")
+    @classmethod
+    def _empty_env_is_none(cls, v: object) -> object:
+        # APNS_KEY_ID= (empty) must mean "APNs off", not Path('.') / ''.
+        return None if v == "" else v
     pusher_interval_seconds: int = Field(
         default=300, ge=60, validation_alias="PUSHER_INTERVAL_SECONDS"
     )
