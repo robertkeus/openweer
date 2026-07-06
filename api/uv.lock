@@ -516,6 +516,7 @@ dev = [
     { name = "asgi-lifespan" },
     { name = "httpx" },
     { name = "pytest-httpx" },
+    { name = "types-aiofiles" },
 ]
 
 [package.metadata]
@@ -546,6 +547,7 @@ dev = [
     { name = "asgi-lifespan", specifier = ">=2.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pytest-httpx", specifier = ">=0.34" },
+    { name = "types-aiofiles", specifier = ">=25.1.0.20260518" },
 ]
 
 [[package]]
@@ -931,6 +933,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ef/52/9ba0f43b686e7f3ddfeaa78ac3af750292662284b3661e91ad5494f21dbc/structlog-25.5.0.tar.gz", hash = "sha256:098522a3bebed9153d4570c6d0288abf80a031dfdb2048d59a49e9dc2190fc98", size = 1460830, upload-time = "2025-10-27T08:28:23.028Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a8/45/a132b9074aa18e799b891b91ad72133c98d8042c70f6240e4c5f9dabee2f/structlog-25.5.0-py3-none-any.whl", hash = "sha256:a8453e9b9e636ec59bd9e79bbd4a72f025981b3ba0f5837aebf48f02f37a7f9f", size = 72510, upload-time = "2025-10-27T08:28:21.535Z" },
+]
+
+[[package]]
+name = "types-aiofiles"
+version = "25.1.0.20260518"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/42/f5b9b90162d2196f016b87228d6bf43f2c2c0c6501bfd5415001b3eb68bb/types_aiofiles-25.1.0.20260518.tar.gz", hash = "sha256:c0c95eb78755d4fa7b397d4f0332c632714dd7cd0d17f49b96e31d4d7a8d8c76", size = 14891, upload-time = "2026-05-18T06:05:27.804Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/3d/7a9ed9faafeae3aa3b5bc22fa5b979ff9cf3c83ecbe919b58eae07795b8c/types_aiofiles-25.1.0.20260518-py3-none-any.whl", hash = "sha256:f776bdfb4bec17f743d9ef042e61edf03bdcc7821fc08556fba9b63d873fdea9", size = 14377, upload-time = "2026-05-18T06:05:26.871Z" },
 ]
 
 [[package]]

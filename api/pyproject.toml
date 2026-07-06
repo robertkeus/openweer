@@ -64,9 +64,15 @@ strict = true
 warn_unused_ignores = true
 plugins = ["pydantic.mypy"]
 
+[[tool.mypy.overrides]]
+# Untyped C-extension libs without stubs on PyPI.
+module = ["h5py", "h5py.*", "affine", "rasterio", "rasterio.*"]
+ignore_missing_imports = true
+
 [dependency-groups]
 dev = [
     "asgi-lifespan>=2.1",
     "httpx>=0.28.1",
     "pytest-httpx>=0.34",
+    "types-aiofiles>=25.1.0.20260518",
 ]

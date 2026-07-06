@@ -16,7 +16,7 @@ from pathlib import Path
 
 import h5py
 import numpy as np
-from rasterio.warp import transform as warp_transform  # type: ignore[import-untyped]
+from rasterio.warp import transform as warp_transform
 
 from openweer._logging import get_logger
 from openweer.forecast.rain_2h import RainSample
@@ -123,7 +123,7 @@ def _decode_attr(value: object) -> str:
         return value.decode("ascii", "ignore")
     if hasattr(value, "tobytes"):
         try:
-            return value.tobytes().decode("ascii", "ignore")
+            return str(value.tobytes().decode("ascii", "ignore"))
         except (AttributeError, UnicodeDecodeError):
             pass
     return str(value)

@@ -13,7 +13,7 @@ import ssl
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, Final
 
 import aiomqtt
 from pydantic import BaseModel, ConfigDict, Field
@@ -22,7 +22,7 @@ from openweer.knmi.datasets import Dataset
 
 MQTT_HOST = "mqtt.dataplatform.knmi.nl"
 MQTT_PORT = 443
-MQTT_TRANSPORT = "websockets"
+MQTT_TRANSPORT: Final = "websockets"
 MQTT_USERNAME = "token"  # KNMI convention; the actual secret is the password.
 MQTT_VERSION = aiomqtt.ProtocolVersion.V5
 DEFAULT_KEEPALIVE = 60

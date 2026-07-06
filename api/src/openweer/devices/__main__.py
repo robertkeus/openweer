@@ -21,7 +21,7 @@ from typing import cast
 from openweer._logging import configure_logging
 from openweer.devices.apns import APNsClient, APNsConfig
 from openweer.devices.evaluator import Alert
-from openweer.devices.models import AlertPrefs, Favorite, Intensity, LeadTime
+from openweer.devices.models import AlertPrefs, Favorite, Intensity
 from openweer.devices.repository import DeviceRepository
 from openweer.settings import Settings, get_settings
 

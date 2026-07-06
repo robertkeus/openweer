@@ -11,6 +11,7 @@ from collections.abc import Awaitable, Callable
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+from starlette.types import ASGIApp
 
 # A locked-down baseline for the JSON API. The web app (web/) sets its own,
 # slightly looser CSP via Caddy/nginx because it serves HTML + WebGL.
@@ -31,7 +32,7 @@ _DEFAULT_HEADERS: dict[str, str] = {
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Inject conservative security headers into every response."""
 
-    def __init__(self, app, headers: dict[str, str] | None = None) -> None:
+    def __init__(self, app: ASGIApp, headers: dict[str, str] | None = None) -> None:
         super().__init__(app)
         self._headers = headers if headers is not None else _DEFAULT_HEADERS
 

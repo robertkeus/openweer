@@ -53,7 +53,7 @@ def configure_logging(level: str = "INFO") -> None:
 
 def get_logger(name: str | None = None, **initial: Any) -> structlog.stdlib.BoundLogger:
     """Return a bound structlog logger. Use the module name by default."""
-    logger = structlog.get_logger(name)
+    logger: structlog.stdlib.BoundLogger = structlog.get_logger(name)
     if initial:
         logger = logger.bind(**initial)
     return logger

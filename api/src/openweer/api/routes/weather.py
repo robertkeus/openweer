@@ -208,7 +208,7 @@ def _feels_like(
         # Wind-chill (Steadman) — Dutch KNMI uses the JAG/TI variant which
         # is close enough for the UI strip we're building here.
         v_kmh = wind_mps * 3.6
-        wci = (
+        wci: float = (
             13.12
             + 0.6215 * temp_c
             - 11.37 * (v_kmh**0.16)
@@ -217,7 +217,7 @@ def _feels_like(
         return round(wci, 1)
     if temp_c >= 26.0 and humidity_pct is not None:
         # Steadman apparent temperature (simplified): adds humidity-driven heat.
-        e = (humidity_pct / 100) * 6.105 * 2.71828 ** ((17.27 * temp_c) / (237.7 + temp_c))
+        e: float = (humidity_pct / 100) * 6.105 * 2.71828 ** ((17.27 * temp_c) / (237.7 + temp_c))
         at = temp_c + 0.348 * e - 0.7 * (wind_mps or 0) - 4.25
         return round(at, 1)
     return round(temp_c, 1)

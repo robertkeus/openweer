@@ -18,26 +18,28 @@ from datetime import datetime
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
-import httpx
-import structlog
 from fastapi import APIRouter, HTTPException, status
 from fastapi import Path as PathParam
 from pydantic import BaseModel, Field
 
 from openweer.api._bbox import NL_LAT_MAX, NL_LAT_MIN, NL_LON_MAX, NL_LON_MIN
 from openweer.api._errors import upstream_url_guard
+from openweer.api.routes._open_meteo import (
+    CACHE_TTL_S,
+    ECMWF_MODEL,
+    FORECAST_DAYS,
+    HARMONIE_DAYS,
+    HARMONIE_MODEL,
+    OPEN_METEO_URL,
+    Series,
+    at,
+    at_bool,
+    fetch_model,
+)
 from openweer.knmi._security import assert_open_meteo_url
 
 router = APIRouter(prefix="/api", tags=["forecast"])
-log = structlog.get_logger("openweer.forecast_hourly")
 
-_OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
-_HARMONIE_MODEL = "knmi_harmonie_arome_europe"
-_ECMWF_MODEL = "ecmwf_ifs025"
-_FORECAST_DAYS = 8
-_HARMONIE_DAYS = 3
-_HTTP_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
-_CACHE_TTL_S = 15 * 60
 _AMSTERDAM_TZ = ZoneInfo("Europe/Amsterdam")
 
 _HOURLY_FIELDS = ",".join(
@@ -101,11 +103,15 @@ async def forecast_hourly(
         return cached[1]
 
     with upstream_url_guard("De voorspellingsbron is niet toegestaan."):
-        url = assert_open_meteo_url(_OPEN_METEO_URL)
+        url = assert_open_meteo_url(OPEN_METEO_URL)
 
     harmonie_data, ecmwf_data = await asyncio.gather(
-        _fetch_model(url, rlat, rlon, _HARMONIE_MODEL, _HARMONIE_DAYS),
-        _fetch_model(url, rlat, rlon, _ECMWF_MODEL, _FORECAST_DAYS),
+        fetch_model(
+            url, rlat, rlon, HARMONIE_MODEL, HARMONIE_DAYS, section="hourly", fields=_HOURLY_FIELDS
+        ),
+        fetch_model(
+            url, rlat, rlon, ECMWF_MODEL, FORECAST_DAYS, section="hourly", fields=_HOURLY_FIELDS
+        ),
     )
 
     if ecmwf_data is None:
@@ -115,43 +121,18 @@ async def forecast_hourly(
         )
 
     response = _merge(rlat, rlon, harmonie_data, ecmwf_data)
-    _cache[cache_key] = (now + _CACHE_TTL_S, response)
+    _cache[cache_key] = (now + CACHE_TTL_S, response)
     return response
-
-
-async def _fetch_model(
-    url: str, lat: float, lon: float, model: str, days: int
-) -> dict | None:
-    params = {
-        "latitude": f"{lat}",
-        "longitude": f"{lon}",
-        "hourly": _HOURLY_FIELDS,
-        "timezone": "Europe/Amsterdam",
-        "forecast_days": str(days),
-        "models": model,
-    }
-    try:
-        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-            resp = await client.get(url, params=params)
-            resp.raise_for_status()
-            return resp.json()
-    except httpx.HTTPError as exc:
-        log.warning(
-            "forecast_hourly.model_fetch_failed",
-            model=model,
-            error=type(exc).__name__,
-        )
-        return None
 
 
 def _merge(
     lat: float,
     lon: float,
-    harmonie: dict | None,
-    ecmwf: dict,
+    harmonie: Series | None,
+    ecmwf: Series,
 ) -> HourlyForecastResponse:
-    ecmwf_hourly = ecmwf.get("hourly") or {}
-    harmonie_hourly = (harmonie.get("hourly") or {}) if harmonie else {}
+    ecmwf_hourly: Series = ecmwf.get("hourly") or {}
+    harmonie_hourly: Series = (harmonie.get("hourly") or {}) if harmonie else {}
 
     ecmwf_times: list[str] = ecmwf_hourly.get("time") or []
     harmonie_times: list[str] = harmonie_hourly.get("time") or []
@@ -160,69 +141,33 @@ def _merge(
     hours: list[HourlySlot] = []
     for ei, t in enumerate(ecmwf_times):
         hi = harmonie_by_time.get(t)
-        use_harmonie = (
-            hi is not None
-            and _at(harmonie_hourly, "temperature_2m", hi, float) is not None
-        )
-
-        if use_harmonie:
-            src = harmonie_hourly
-            si = hi
-            source = "knmi-harmonie"
+        if hi is not None and at(harmonie_hourly, "temperature_2m", hi, float) is not None:
+            src, si, source = harmonie_hourly, hi, "knmi-harmonie"
         else:
-            src = ecmwf_hourly
-            si = ei
-            source = "ecmwf"
+            src, si, source = ecmwf_hourly, ei, "ecmwf"
 
         hours.append(
             HourlySlot(
                 time=datetime.fromisoformat(t).replace(tzinfo=_AMSTERDAM_TZ),
-                weather_code=_at(src, "weathercode", si, int),
-                temperature_c=_at(src, "temperature_2m", si, float),
-                apparent_temperature_c=_at(src, "apparent_temperature", si, float),
-                precipitation_mm=_at(src, "precipitation", si, float),
+                weather_code=at(src, "weathercode", si, int),
+                temperature_c=at(src, "temperature_2m", si, float),
+                apparent_temperature_c=at(src, "apparent_temperature", si, float),
+                precipitation_mm=at(src, "precipitation", si, float),
                 # HARMONIE is deterministic — always take probability from ECMWF.
-                precipitation_probability_pct=_at(
+                precipitation_probability_pct=at(
                     ecmwf_hourly, "precipitation_probability", ei, int
                 ),
-                wind_speed_kph=_at(src, "windspeed_10m", si, float),
-                wind_direction_deg=_at(src, "winddirection_10m", si, int),
-                wind_gusts_kph=_at(src, "windgusts_10m", si, float),
-                relative_humidity_pct=_at(src, "relative_humidity_2m", si, int),
-                cloud_cover_pct=_at(src, "cloudcover", si, int),
-                uv_index=_at(src, "uv_index", si, float),
-                is_day=_at_bool(src, "is_day", si),
+                wind_speed_kph=at(src, "windspeed_10m", si, float),
+                wind_direction_deg=at(src, "winddirection_10m", si, int),
+                wind_gusts_kph=at(src, "windgusts_10m", si, float),
+                relative_humidity_pct=at(src, "relative_humidity_2m", si, int),
+                cloud_cover_pct=at(src, "cloudcover", si, int),
+                uv_index=at(src, "uv_index", si, float),
+                is_day=at_bool(src, "is_day", si),
                 source=source,
             )
         )
     return HourlyForecastResponse(lat=lat, lon=lon, hours=hours)
-
-
-def _at(hourly: dict, key: str, idx: int, cast):  # type: ignore[type-arg]
-    arr = hourly.get(key) or []
-    if idx >= len(arr):
-        return None
-    v = arr[idx]
-    if v is None:
-        return None
-    try:
-        return cast(v)
-    except (TypeError, ValueError):
-        return None
-
-
-def _at_bool(hourly: dict, key: str, idx: int) -> bool | None:
-    arr = hourly.get(key) or []
-    if idx >= len(arr):
-        return None
-    v = arr[idx]
-    if v is None:
-        return None
-    # Open-Meteo `is_day` is 0/1.
-    try:
-        return bool(int(v))
-    except (TypeError, ValueError):
-        return None
 
 
 def _reset_hourly_cache_for_tests() -> None:

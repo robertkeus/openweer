@@ -21,8 +21,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
-import rasterio  # type: ignore[import-untyped]
-from rasterio.warp import transform as warp_transform  # type: ignore[import-untyped]
+import rasterio
+from rasterio.warp import transform as warp_transform
 
 from openweer._logging import get_logger
 

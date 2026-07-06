@@ -24,8 +24,8 @@ from pathlib import Path
 from typing import cast
 
 import numpy as np
-import rasterio  # type: ignore[import-untyped]
-from rasterio.io import DatasetReader  # type: ignore[import-untyped]
+import rasterio
+from rasterio.io import DatasetReader
 
 from openweer._logging import get_logger
 from openweer.tiler.radar_hdf5 import RadarSubImage

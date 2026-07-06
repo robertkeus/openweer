@@ -146,7 +146,7 @@ def _attr_text(value: object) -> str:
         return value.decode("ascii", "ignore")
     if hasattr(value, "tobytes"):
         try:
-            return value.tobytes().decode("ascii", "ignore")
+            return str(value.tobytes().decode("ascii", "ignore"))
         except (AttributeError, UnicodeDecodeError):
             pass
     return str(value)
