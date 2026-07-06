@@ -36,7 +36,8 @@ export default function Privacy() {
             <p>
               OpenWeer is een open-source weerplatform zonder accounts, zonder
               advertenties en zonder trackers. We verzamelen geen persoonlijke
-              gegevens. Weerdata komt van het KNMI (open data, CC&nbsp;BY&nbsp;4.0).
+              gegevens. Weerdata komt van het KNMI (open data,
+              CC&nbsp;BY&nbsp;4.0).
             </p>
           </section>
 
@@ -66,19 +67,19 @@ export default function Privacy() {
               <li>
                 <strong>Serverlogs:</strong> onze webserver (nginx) houdt
                 tijdelijk standaard toegangslogs bij om misbruik en
-                rate-limiting af te dwingen. IP-adressen worden uitsluitend
-                voor dat doel gebruikt en niet aan een persoon gekoppeld.
+                rate-limiting af te dwingen. IP-adressen worden uitsluitend voor
+                dat doel gebruikt en niet aan een persoon gekoppeld.
               </li>
               <li>
                 <strong>Locatie:</strong> als je locatie deelt via de browser
-                gebruiken we die alleen lokaal in je apparaat om de
-                regenradar op je positie te centreren. We slaan je exacte
-                coördinaten niet op op onze server.
+                gebruiken we die alleen lokaal in je apparaat om de regenradar
+                op je positie te centreren. We slaan je exacte coördinaten niet
+                op op onze server.
               </li>
               <li>
                 <strong>Voorkeuren:</strong> thema (licht/donker) en
-                geselecteerde locatie worden in <code>localStorage</code> van
-                je browser opgeslagen — die data verlaat je apparaat niet.
+                geselecteerde locatie worden in <code>localStorage</code> van je
+                browser opgeslagen — die data verlaat je apparaat niet.
               </li>
             </ul>
 
@@ -90,16 +91,15 @@ export default function Privacy() {
                 <strong>Regennotificaties (optioneel):</strong> als je
                 pushmeldingen aanzet, slaat onze server je anonieme APNs
                 device-token op samen met de coördinaten van je favoriete
-                locaties. Daarmee kunnen we je waarschuwen voor naderende
-                regen. We koppelen die token niet aan een naam, e-mailadres
-                of Apple-ID — het is een ondoorzichtige identifier van
-                Apple.
+                locaties. Daarmee kunnen we je waarschuwen voor naderende regen.
+                We koppelen die token niet aan een naam, e-mailadres of Apple-ID
+                — het is een ondoorzichtige identifier van Apple.
               </li>
               <li>
-                <strong>Locatie:</strong> je actuele locatie wordt alleen op
-                je apparaat verwerkt om weer en radar voor jouw positie te
-                tonen. Coördinaten die naar onze API worden gestuurd voor
-                weerverzoeken worden niet aan jou gekoppeld bewaard.
+                <strong>Locatie:</strong> je actuele locatie wordt alleen op je
+                apparaat verwerkt om weer en radar voor jouw positie te tonen.
+                Coördinaten die naar onze API worden gestuurd voor weerverzoeken
+                worden niet aan jou gekoppeld bewaard.
               </li>
               <li>
                 <strong>Geen tracking-SDK&apos;s:</strong> de app bevat geen
@@ -117,10 +117,9 @@ export default function Privacy() {
                 Serverlogs: maximaal 14 dagen, daarna automatisch verwijderd.
               </li>
               <li>
-                Push device-tokens: zolang je notificaties hebt aanstaan en
-                de app geïnstalleerd is. Verwijder je de app of zet je push
-                uit in de app, dan wordt de token verwijderd uit onze
-                database.
+                Push device-tokens: zolang je notificaties hebt aanstaan en de
+                app geïnstalleerd is. Verwijder je de app of zet je push uit in
+                de app, dan wordt de token verwijderd uit onze database.
               </li>
             </ul>
           </section>
@@ -131,9 +130,9 @@ export default function Privacy() {
             </h2>
             <p>
               Zet pushmeldingen uit via{" "}
-              <em>Instellingen → Meldingen → Regennotificaties</em> in de
-              app, of verwijder de app. In beide gevallen wordt je
-              device-token bij ons verwijderd.
+              <em>Instellingen → Meldingen → Regennotificaties</em> in de app,
+              of verwijder de app. In beide gevallen wordt je device-token bij
+              ons verwijderd.
             </p>
           </section>
 
@@ -185,14 +184,14 @@ export default function Privacy() {
               English summary
             </h2>
             <p>
-              OpenWeer is an open-source weather platform with no accounts,
-              no ads and no third-party trackers. The website keeps
-              short-lived nginx access logs only for rate-limiting. The iOS
-              app stores an anonymous APNs device token plus your favourite
-              coordinates on our server <em>only</em> when you opt in to
-              rain push notifications; turning push off or deleting the app
-              removes the token. Weather data is © KNMI, CC&nbsp;BY&nbsp;4.0.
-              Questions: privacy@openweer.nl.
+              OpenWeer is an open-source weather platform with no accounts, no
+              ads and no third-party trackers. The website keeps short-lived
+              nginx access logs only for rate-limiting. The iOS app stores an
+              anonymous APNs device token plus your favourite coordinates on our
+              server <em>only</em> when you opt in to rain push notifications;
+              turning push off or deleting the app removes the token. Weather
+              data is © KNMI, CC&nbsp;BY&nbsp;4.0. Questions:
+              privacy@openweer.nl.
             </p>
           </section>
         </article>

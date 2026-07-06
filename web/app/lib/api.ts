@@ -196,7 +196,9 @@ export const HourlyForecastResponseSchema = z.object({
 });
 
 export type HourlySlot = z.infer<typeof HourlySlotSchema>;
-export type HourlyForecastResponse = z.infer<typeof HourlyForecastResponseSchema>;
+export type HourlyForecastResponse = z.infer<
+  typeof HourlyForecastResponseSchema
+>;
 
 // ---- public API ----
 

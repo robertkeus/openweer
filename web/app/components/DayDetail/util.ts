@@ -80,9 +80,7 @@ export function fmtTemp(c: number | null | undefined): string {
   return `${c.toFixed(0).replace("-", "−")}°`;
 }
 
-export function wmoToCondition(
-  code: number | null | undefined,
-): ConditionKind {
+export function wmoToCondition(code: number | null | undefined): ConditionKind {
   if (code === null || code === undefined) return "unknown";
   if (code === 0) return "clear";
   if (code <= 3) return "partly-cloudy";
@@ -139,7 +137,9 @@ export function formatHourLabel(slot: HourlySlot): string {
   }).format(new Date(slot.time));
 }
 
-export function formatHHmmFromIso(iso: string | null | undefined): string | null {
+export function formatHHmmFromIso(
+  iso: string | null | undefined,
+): string | null {
   if (!iso) return null;
   // Open-Meteo emits sunrise/sunset as "yyyy-MM-ddTHH:mm" with no tz; just slice.
   const t = iso.indexOf("T");
@@ -147,7 +147,9 @@ export function formatHHmmFromIso(iso: string | null | undefined): string | null
   return iso.slice(t + 1, t + 6);
 }
 
-export function parseHourFromIso(iso: string | null | undefined): number | null {
+export function parseHourFromIso(
+  iso: string | null | undefined,
+): number | null {
   const hhmm = formatHHmmFromIso(iso);
   if (!hhmm) return null;
   const h = Number.parseInt(hhmm.slice(0, 2), 10);

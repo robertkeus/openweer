@@ -36,7 +36,9 @@ export function HourlyRainChart({ slots, pending }: Props) {
 
   const max = Math.max(
     Y_MIN,
-    Math.ceil(slots.reduce((m, s) => Math.max(m, s.precipitation_mm ?? 0), 0) * 1.2),
+    Math.ceil(
+      slots.reduce((m, s) => Math.max(m, s.precipitation_mm ?? 0), 0) * 1.2,
+    ),
   );
   const total = slots.reduce((s, x) => s + (x.precipitation_mm ?? 0), 0);
   const peak = slots.reduce<HourlySlot | null>((best, s) => {
@@ -85,7 +87,10 @@ export function HourlyRainChart({ slots, pending }: Props) {
           <desc id={descId}>{titleText}</desc>
           {slots.map((slot, i) => {
             const mm = slot.precipitation_mm ?? 0;
-            const h = Math.max(1, (Math.min(mm, max) / max) * (VIEW_HEIGHT - 18));
+            const h = Math.max(
+              1,
+              (Math.min(mm, max) / max) * (VIEW_HEIGHT - 18),
+            );
             const x = i * (barWidth + BAR_GAP);
             const y = VIEW_HEIGHT - h - 4;
             return (

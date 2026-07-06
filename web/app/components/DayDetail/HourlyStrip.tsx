@@ -104,18 +104,16 @@ export function HourlyStrip({ slots, day, pending }: Props) {
                   label={isCurrent ? "Nu" : formatHourLabel(slot)}
                   kind={wmoToCondition(slot.weather_code)}
                   temperatureC={slot.temperature_c}
-                  precipitationProbabilityPct={slot.precipitation_probability_pct}
+                  precipitationProbabilityPct={
+                    slot.precipitation_probability_pct
+                  }
                   isHighlighted={isCurrent}
                 />
               </div>
             );
           }
           return (
-            <SunCell
-              key={item.key}
-              symbol={item.symbol}
-              label={item.label}
-            />
+            <SunCell key={item.key} symbol={item.symbol} label={item.label} />
           );
         })}
       </ul>

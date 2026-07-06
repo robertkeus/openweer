@@ -62,8 +62,8 @@ export function LocationConsent({
             className="mt-2 text-sm text-[--color-ink-700] leading-relaxed"
           >
             We gebruiken je coördinaten alleen om de minutenvoorspelling op jouw
-            plek te laten zien. We bewaren ze enkel lokaal op dit apparaat, zodat
-            we het bij een volgend bezoek niet opnieuw hoeven te vragen.
+            plek te laten zien. We bewaren ze enkel lokaal op dit apparaat,
+            zodat we het bij een volgend bezoek niet opnieuw hoeven te vragen.
           </p>
           {error ? (
             <p

@@ -17,7 +17,10 @@ const day: DailyForecast = {
   source: "knmi-harmonie",
 };
 
-const slot = (hour: number, overrides: Partial<HourlySlot> = {}): HourlySlot => ({
+const slot = (
+  hour: number,
+  overrides: Partial<HourlySlot> = {},
+): HourlySlot => ({
   time: new Date(
     Date.UTC(2026, 4, 17, hour - 2 /* +02:00 → UTC */),
   ).toISOString(),

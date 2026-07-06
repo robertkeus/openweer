@@ -254,19 +254,16 @@ export function RadarMap({
     const prevKind = prevIndex !== null ? frames[prevIndex]?.kind : undefined;
     const nextKind = frames[currentIndex]?.kind;
     const crossesSeam = isCrossSourceTransition(prevKind, nextKind);
-    const outgoingId =
-      prevIndex !== null ? frames[prevIndex]?.id : undefined;
+    const outgoingId = prevIndex !== null ? frames[prevIndex]?.id : undefined;
     const incomingId = frames[currentIndex]?.id;
 
     frames.forEach((frame, i) => {
       // Only the two layers actually involved in this transition need their
       // transition duration retuned; leave others on whatever they were.
       if (frame.id === outgoingId || frame.id === incomingId) {
-        m.setPaintProperty(
-          `radar-${frame.id}`,
-          "raster-opacity-transition",
-          { duration: crossesSeam ? CROSS_SOURCE_FADE_MS : FADE_MS },
-        );
+        m.setPaintProperty(`radar-${frame.id}`, "raster-opacity-transition", {
+          duration: crossesSeam ? CROSS_SOURCE_FADE_MS : FADE_MS,
+        });
       }
       m.setPaintProperty(
         `radar-${frame.id}`,

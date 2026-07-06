@@ -23,9 +23,7 @@ export function HourCell({
   const parts = [
     label,
     conditionLabelNl(kind).toLowerCase(),
-    temperatureC === null
-      ? null
-      : `${Math.round(temperatureC)} graden`,
+    temperatureC === null ? null : `${Math.round(temperatureC)} graden`,
     showPct ? `${precipitationProbabilityPct} procent kans op regen` : null,
   ].filter(Boolean);
   return (

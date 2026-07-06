@@ -65,9 +65,7 @@ function Tile({
           {primary}
         </span>
         {caption ? (
-          <span className="ml-2 text-xs text-[--color-ink-700]">
-            {caption}
-          </span>
+          <span className="ml-2 text-xs text-[--color-ink-700]">{caption}</span>
         ) : null}
       </dd>
     </div>
@@ -87,7 +85,8 @@ function windCaption(
 ): string | null {
   const gust = max(slots.map((s) => s.wind_gusts_kph));
   const dir =
-    circularMean(slots.map((s) => s.wind_direction_deg)) ?? day.wind_direction_deg;
+    circularMean(slots.map((s) => s.wind_direction_deg)) ??
+    day.wind_direction_deg;
   const parts: string[] = [];
   const compass = compassFor(dir);
   if (compass) parts.push(compass);
